@@ -35,6 +35,8 @@ function App() {
     return instance;
   }, [auth]);
 
+  const isAdmin = auth?.user?.role === 'admin';
+
   const handleLoginChange = (e) => {
     setLoginForm({ ...loginForm, [e.target.name]: e.target.value });
   };
@@ -87,6 +89,9 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!isAdmin) return;
+
     try {
       await api.post('/submit', form);
       alert('✅ המידע נשמר בהצלחה!');
@@ -114,6 +119,8 @@ function App() {
   };
 
   const handleDelete = async (id) => {
+    if (!isAdmin) return;
+
     if (window.confirm('האם אתה בטוח שתרצה למחוק את הרשומה?')) {
       try {
         await api.delete(`/delete/${id}`);
@@ -178,7 +185,7 @@ function App() {
 
         <div className="user-panel">
           <span>{auth.user.username}</span>
-          <strong>{auth.user.role}</strong>
+          <strong>{isAdmin ? 'admin' : 'viewer'}</strong>
           <button type="button" onClick={handleLogout} className="btn btn-secondary">
             יציאה
           </button>
@@ -186,6 +193,7 @@ function App() {
       </header>
 
       <div className="main-content">
+        {isAdmin && (
         <section className="form-section">
           <h2>➕ הזנת מידע חדש</h2>
           <form onSubmit={handleSubmit}>
@@ -241,8 +249,9 @@ function App() {
             </button>
           </form>
         </section>
+        )}
 
-        <section className="export-section">
+        <section className={isAdmin ? 'export-section' : 'export-section viewer-export'}>
           <button onClick={handleExport} className="btn btn-export">
             📥 ייצא ל-Excel
           </button>
@@ -265,7 +274,7 @@ function App() {
                     <th>קטגוריה</th>
                     <th>סכום</th>
                     <th>תאריך</th>
-                    <th>פעולות</th>
+                    {isAdmin && <th>פעולות</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -276,14 +285,16 @@ function App() {
                       <td>{row.category}</td>
                       <td>₪{parseFloat(row.amount).toFixed(2)}</td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
-                      <td>
-                        <button
-                          onClick={() => handleDelete(row.id)}
-                          className="btn btn-delete"
-                        >
-                          🗑️ מחק
-                        </button>
-                      </td>
+                      {isAdmin && (
+                        <td>
+                          <button
+                            onClick={() => handleDelete(row.id)}
+                            className="btn btn-delete"
+                          >
+                            🗑️ מחק
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
