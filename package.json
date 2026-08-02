@@ -1,0 +1,10 @@
+{
+  "name": "equipment-tracking",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "scripts\\dev.cmd",
+    "start": "npm run dev",
+    "install:all": "npm install --prefix server && npm install --prefix client"
+  }
+}
