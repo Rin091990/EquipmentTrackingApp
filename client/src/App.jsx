@@ -1,8 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
+const API_URL = 'http://localhost:5000/api';
+
+function getSavedAuth() {
+  try {
+    return JSON.parse(localStorage.getItem('equipmentAuth')) || null;
+  } catch (err) {
+    return null;
+  }
+}
+
 function App() {
+  const [auth, setAuth] = useState(getSavedAuth);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -12,21 +25,63 @@ function App() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchData();
+  const api = useMemo(() => {
+    const instance = axios.create({ baseURL: API_URL });
+
+    if (auth?.token) {
+      instance.defaults.headers.common.Authorization = `Bearer ${auth.token}`;
+    }
+
+    return instance;
+  }, [auth]);
+
+  const isAdmin = auth?.user?.role === 'admin';
+
+  const handleLoginChange = (e) => {
+    setLoginForm({ ...loginForm, [e.target.name]: e.target.value });
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+
+    try {
+      const response = await axios.post(`${API_URL}/login`, loginForm);
+      localStorage.setItem('equipmentAuth', JSON.stringify(response.data));
+      setAuth(response.data);
+      setLoginForm({ username: '', password: '' });
+    } catch (err) {
+      setLoginError(err.response?.data?.error || 'שגיאה בהתחברות');
+    }
+  };
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('equipmentAuth');
+    setAuth(null);
+    setData([]);
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/data');
+      const response = await api.get('/data');
       setData(response.data);
     } catch (err) {
-      console.error('שגיאה בטעינת נתונים:', err);
+      if (err.response?.status === 401) {
+        handleLogout();
+      } else {
+        console.error('שגיאה בטעינת נתונים:', err);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, handleLogout]);
+
+  useEffect(() => {
+    if (auth?.token) {
+      fetchData();
+    }
+  }, [auth?.token, fetchData]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -34,8 +89,11 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!isAdmin) return;
+
     try {
-      await axios.post('http://localhost:5000/api/submit', form);
+      await api.post('/submit', form);
       alert('✅ המידע נשמר בהצלחה!');
       setForm({ name: '', email: '', category: 'sales', amount: '' });
       fetchData();
@@ -46,7 +104,7 @@ function App() {
 
   const handleExport = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/export', {
+      const response = await api.get('/export', {
         responseType: 'blob'
       });
       const url = window.URL.createObjectURL(response.data);
@@ -61,9 +119,11 @@ function App() {
   };
 
   const handleDelete = async (id) => {
+    if (!isAdmin) return;
+
     if (window.confirm('האם אתה בטוח שתרצה למחוק את הרשומה?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/delete/${id}`);
+        await api.delete(`/delete/${id}`);
         alert('✅ נמחק בהצלחה!');
         fetchData();
       } catch (err) {
@@ -72,14 +132,68 @@ function App() {
     }
   };
 
+  if (!auth) {
+    return (
+      <div className="login-page">
+        <section className="login-card">
+          <h1>מערכת ניהול ציוד</h1>
+          <p>התחבר כדי להמשיך</p>
+
+          <form onSubmit={handleLogin}>
+            <div className="form-group">
+              <label>שם משתמש:</label>
+              <input
+                type="text"
+                name="username"
+                value={loginForm.username}
+                onChange={handleLoginChange}
+                autoComplete="username"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>סיסמה:</label>
+              <input
+                type="password"
+                name="password"
+                value={loginForm.password}
+                onChange={handleLoginChange}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+
+            {loginError && <p className="error-message">{loginError}</p>}
+
+            <button type="submit" className="btn btn-primary">
+              התחבר
+            </button>
+          </form>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       <header className="header">
-        <h1>📝 מערכת ניהול ציוד</h1>
-        <p>הזן מידע, שמור לבסיס הנתונים, וייצא ל-Excel</p>
+        <div>
+          <h1>📝 מערכת ניהול ציוד</h1>
+          <p>הזן מידע, שמור לבסיס הנתונים, וייצא ל-Excel</p>
+        </div>
+
+        <div className="user-panel">
+          <span>{auth.user.username}</span>
+          <strong>{isAdmin ? 'admin' : 'viewer'}</strong>
+          <button type="button" onClick={handleLogout} className="btn btn-secondary">
+            יציאה
+          </button>
+        </div>
       </header>
 
       <div className="main-content">
+        {isAdmin && (
         <section className="form-section">
           <h2>➕ הזנת מידע חדש</h2>
           <form onSubmit={handleSubmit}>
@@ -135,8 +249,9 @@ function App() {
             </button>
           </form>
         </section>
+        )}
 
-        <section className="export-section">
+        <section className={isAdmin ? 'export-section' : 'export-section viewer-export'}>
           <button onClick={handleExport} className="btn btn-export">
             📥 ייצא ל-Excel
           </button>
@@ -159,7 +274,7 @@ function App() {
                     <th>קטגוריה</th>
                     <th>סכום</th>
                     <th>תאריך</th>
-                    <th>פעולות</th>
+                    {isAdmin && <th>פעולות</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -170,14 +285,16 @@ function App() {
                       <td>{row.category}</td>
                       <td>₪{parseFloat(row.amount).toFixed(2)}</td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
-                      <td>
-                        <button
-                          onClick={() => handleDelete(row.id)}
-                          className="btn btn-delete"
-                        >
-                          🗑️ מחק
-                        </button>
-                      </td>
+                      {isAdmin && (
+                        <td>
+                          <button
+                            onClick={() => handleDelete(row.id)}
+                            className="btn btn-delete"
+                          >
+                            🗑️ מחק
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
