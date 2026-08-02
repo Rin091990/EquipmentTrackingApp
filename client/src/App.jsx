@@ -111,12 +111,12 @@ function App() {
     const { name, value } = e.target;
 
     if (name === 'category') {
-      setForm({
-        ...form,
+      setForm((prev) => ({
+        ...prev,
         category: value,
         storage: value === 'computer' ? '512GB' : '256GB',
-        color: value === 'computer' ? '' : form.color,
-      });
+        color: value === 'computer' ? '' : prev.color,
+      }));
       return;
     }
 
