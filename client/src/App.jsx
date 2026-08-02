@@ -48,12 +48,16 @@ function App() {
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    if (!normalizedSearch) return data;
+    const rows = normalizedSearch
+      ? data.filter((row) =>
+          [row.name, row.email, row.category, row.manufacturer, row.model, row.serial_number]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(normalizedSearch))
+        )
+      : data;
 
-    return data.filter((row) =>
-      [row.name, row.email, row.category, row.manufacturer, row.model, row.serial_number]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(normalizedSearch))
+    return [...rows].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }, [data, searchTerm]);
 
