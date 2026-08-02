@@ -99,8 +99,22 @@ const createTable = async () => {
         email VARCHAR(255),
         category VARCHAR(100),
         amount DECIMAL(10,2),
+        manufacturer VARCHAR(255),
+        model VARCHAR(255),
+        color VARCHAR(100),
+        storage VARCHAR(50),
+        serial_number VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    await client.query(`
+      ALTER TABLE forms
+      ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS model VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS color VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS storage VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS serial_number VARCHAR(255)
     `);
     console.log('✅ טבלה "forms" מוכנה!');
   } catch (err) {
@@ -132,15 +146,38 @@ app.post('/api/login', (req, res) => {
 // API להוספת מידע
 app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, email, category, amount } = req.body;
+    const { name, email, category, manufacturer, model, color, storage, serialNumber } = req.body;
     
-    if (!name || !email || !category || !amount) {
+    if (
+      !name ||
+      !email ||
+      !category ||
+      !manufacturer ||
+      !model ||
+      !storage ||
+      !serialNumber
+    ) {
       return res.status(400).json({ error: 'חסרים נתונים!' });
     }
 
+    if (category === 'phone' && !color) {
+      return res.status(400).json({ error: 'חסר צבע לפלאפון!' });
+    }
+
     await client.query(
-      'INSERT INTO forms (name, email, category, amount) VALUES ($1, $2, $3, $4)',
-      [name, email, category, parseFloat(amount)]
+      `INSERT INTO forms
+        (name, email, category, manufacturer, model, color, storage, serial_number)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        name,
+        email,
+        category,
+        manufacturer,
+        model,
+        category === 'phone' ? color : null,
+        storage,
+        serialNumber,
+      ]
     );
     res.status(201).json({ message: '✅ נשמר בהצלחה!' });
   } catch (err) {
@@ -153,7 +190,17 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
 app.get('/api/export', requireAuth, async (req, res) => {
   try {
     const result = await client.query('SELECT * FROM forms ORDER BY created_at DESC');
-    const records = result.rows;
+    const records = result.rows.map((row) => ({
+      name: row.name,
+      email: row.email,
+      category: row.category,
+      manufacturer: row.manufacturer || '',
+      model: row.model || '',
+      color: row.color || '',
+      storage: row.storage || '',
+      serial_number: row.serial_number || '',
+      created_at: row.created_at,
+    }));
 
     if (records.length === 0) {
       return res.status(404).json({ error: 'אין נתונים לייצא' });

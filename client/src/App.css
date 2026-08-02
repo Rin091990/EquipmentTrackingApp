@@ -104,6 +104,12 @@ body {
   grid-column: 1;
 }
 
+.equipment-fields {
+  border-top: 1px solid #eeeeee;
+  margin-top: 5px;
+  padding-top: 15px;
+}
+
 .export-section {
   grid-column: 1;
   display: flex;
@@ -207,6 +213,28 @@ body {
   overflow-x: auto;
 }
 
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.search-input {
+  width: 280px;
+  max-width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -258,5 +286,14 @@ table tbody tr:hover {
 
   .user-panel {
     justify-content: center;
+  }
+
+  .table-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .search-input {
+    width: 100%;
   }
 }
