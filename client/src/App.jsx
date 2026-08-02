@@ -385,7 +385,7 @@ function App() {
                     <tr key={row.id}>
                       <td>{row.name}</td>
                       <td>{row.email}</td>
-                      <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
+                      <td>{row.category === 'computer' ? 'מחשב' : row.category === 'phone' ? 'פלאפון' : (row.category || '-')}</td>
                       <td>{row.manufacturer || '-'}</td>
                       <td>{row.model || '-'}</td>
                       <td>{row.color || '-'}</td>
