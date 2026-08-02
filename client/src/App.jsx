@@ -30,6 +30,7 @@ function App() {
   const [form, setForm] = useState(emptyForm);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: API_URL });
@@ -44,6 +45,17 @@ function App() {
   const isAdmin = auth?.user?.role === 'admin';
   const isComputer = form.category === 'computer';
   const isPhone = form.category === 'phone';
+  const filteredData = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    if (!normalizedSearch) return data;
+
+    return data.filter((row) =>
+      [row.name, row.email, row.category, row.manufacturer, row.model, row.serial_number]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch))
+    );
+  }, [data, searchTerm]);
 
   const handleLoginChange = (e) => {
     setLoginForm({ ...loginForm, [e.target.name]: e.target.value });
@@ -332,11 +344,20 @@ function App() {
         </section>
 
         <section className="table-section">
-          <h2>הנתונים השמורים ({data.length})</h2>
+          <div className="table-header">
+            <h2>הנתונים השמורים ({filteredData.length})</h2>
+            <input
+              type="search"
+              className="search-input"
+              placeholder="חיפוש לפי שם או מילת מפתח"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
           {loading ? (
             <p>טוען נתונים...</p>
-          ) : data.length === 0 ? (
+          ) : filteredData.length === 0 ? (
             <p>אין נתונים עדיין.</p>
           ) : (
             <div className="table-wrapper">
@@ -356,7 +377,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map((row) => (
+                  {filteredData.map((row) => (
                     <tr key={row.id}>
                       <td>{row.name}</td>
                       <td>{row.email}</td>
