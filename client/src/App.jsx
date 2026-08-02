@@ -12,16 +12,22 @@ function getSavedAuth() {
   }
 }
 
+const emptyForm = {
+  name: '',
+  email: '',
+  category: 'computer',
+  manufacturer: '',
+  model: '',
+  color: '',
+  storage: '512GB',
+  serialNumber: '',
+};
+
 function App() {
   const [auth, setAuth] = useState(getSavedAuth);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    category: 'sales',
-    amount: ''
-  });
+  const [form, setForm] = useState(emptyForm);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +42,8 @@ function App() {
   }, [auth]);
 
   const isAdmin = auth?.user?.role === 'admin';
+  const isComputer = form.category === 'computer';
+  const isPhone = form.category === 'phone';
 
   const handleLoginChange = (e) => {
     setLoginForm({ ...loginForm, [e.target.name]: e.target.value });
@@ -84,7 +92,19 @@ function App() {
   }, [auth?.token, fetchData]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === 'category') {
+      setForm({
+        ...form,
+        category: value,
+        storage: value === 'computer' ? '512GB' : '256GB',
+        color: value === 'computer' ? '' : form.color,
+      });
+      return;
+    }
+
+    setForm({ ...form, [name]: value });
   };
 
   const handleSubmit = async (e) => {
@@ -94,27 +114,27 @@ function App() {
 
     try {
       await api.post('/submit', form);
-      alert('✅ המידע נשמר בהצלחה!');
-      setForm({ name: '', email: '', category: 'sales', amount: '' });
+      alert('המידע נשמר בהצלחה!');
+      setForm(emptyForm);
       fetchData();
     } catch (err) {
-      alert('❌ שגיאה: ' + (err.response?.data?.error || err.message));
+      alert('שגיאה: ' + (err.response?.data?.error || err.message));
     }
   };
 
   const handleExport = async () => {
     try {
       const response = await api.get('/export', {
-        responseType: 'blob'
+        responseType: 'blob',
       });
       const url = window.URL.createObjectURL(response.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `export-${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.download = `equipment-${new Date().toISOString().split('T')[0]}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert('❌ שגיאה בייצוא: ' + err.message);
+      alert('שגיאה בייצוא: ' + err.message);
     }
   };
 
@@ -124,10 +144,10 @@ function App() {
     if (window.confirm('האם אתה בטוח שתרצה למחוק את הרשומה?')) {
       try {
         await api.delete(`/delete/${id}`);
-        alert('✅ נמחק בהצלחה!');
+        alert('נמחק בהצלחה!');
         fetchData();
       } catch (err) {
-        alert('❌ שגיאה: ' + err.message);
+        alert('שגיאה: ' + err.message);
       }
     }
   };
@@ -179,8 +199,8 @@ function App() {
     <div className="app-container">
       <header className="header">
         <div>
-          <h1>📝 מערכת ניהול ציוד</h1>
-          <p>הזן מידע, שמור לבסיס הנתונים, וייצא ל-Excel</p>
+          <h1>מערכת ניהול ציוד</h1>
+          <p>ניהול ציוד עובדים וייצוא ל-Excel</p>
         </div>
 
         <div className="user-panel">
@@ -194,85 +214,143 @@ function App() {
 
       <div className="main-content">
         {isAdmin && (
-        <section className="form-section">
-          <h2>➕ הזנת מידע חדש</h2>
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>שם:</label>
-              <input
-                type="text"
-                name="name"
-                placeholder="הזן שם"
-                value={form.name}
-                onChange={handleChange}
-                required
-              />
-            </div>
+          <section className="form-section">
+            <h2>הזנת מידע חדש</h2>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>שם עובד:</label>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="הזן שם עובד"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-            <div className="form-group">
-              <label>דוא״ל:</label>
-              <input
-                type="email"
-                name="email"
-                placeholder="הזן דוא״ל"
-                value={form.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
+              <div className="form-group">
+                <label>דוא"ל:</label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="הזן דוא״ל"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-            <div className="form-group">
-              <label>קטגוריה:</label>
-              <select name="category" value={form.category} onChange={handleChange}>
-                <option value="sales">מכירות</option>
-                <option value="support">תמיכה</option>
-                <option value="billing">חיוב</option>
-                <option value="other">אחר</option>
-              </select>
-            </div>
+              <div className="form-group">
+                <label>קטגוריה:</label>
+                <select name="category" value={form.category} onChange={handleChange}>
+                  <option value="computer">מחשב</option>
+                  <option value="phone">פלאפון</option>
+                </select>
+              </div>
 
-            <div className="form-group">
-              <label>סכום:</label>
-              <input
-                type="number"
-                name="amount"
-                placeholder="הזן סכום"
-                value={form.amount}
-                onChange={handleChange}
-                step="0.01"
-                required
-              />
-            </div>
+              <div className="form-group">
+                <label>מקום:</label>
+                <select name="storage" value={form.storage} onChange={handleChange}>
+                  {isComputer ? (
+                    <>
+                      <option value="512GB">512GB</option>
+                      <option value="1T">1T</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="256GB">256GB</option>
+                      <option value="512GB">512GB</option>
+                    </>
+                  )}
+                </select>
+              </div>
 
-            <button type="submit" className="btn btn-primary">
-              💾 שמור מידע
-            </button>
-          </form>
-        </section>
+              <div className="equipment-fields">
+                <div className="form-group">
+                  <label>יצרן:</label>
+                  <input
+                    type="text"
+                    name="manufacturer"
+                    placeholder="הזן יצרן"
+                    value={form.manufacturer}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>דגם:</label>
+                  <input
+                    type="text"
+                    name="model"
+                    placeholder="הזן דגם"
+                    value={form.model}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                {isPhone && (
+                  <div className="form-group">
+                    <label>צבע:</label>
+                    <input
+                      type="text"
+                      name="color"
+                      placeholder="הזן צבע"
+                      value={form.color}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>סיריאל:</label>
+                  <input
+                    type="text"
+                    name="serialNumber"
+                    placeholder="הזן סיריאל"
+                    value={form.serialNumber}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="btn btn-primary">
+                שמור מידע
+              </button>
+            </form>
+          </section>
         )}
 
         <section className={isAdmin ? 'export-section' : 'export-section viewer-export'}>
           <button onClick={handleExport} className="btn btn-export">
-            📥 ייצא ל-Excel
+            ייצא ל-Excel
           </button>
         </section>
 
         <section className="table-section">
-          <h2>📊 הנתונים השמורים ({data.length})</h2>
-          
+          <h2>הנתונים השמורים ({data.length})</h2>
+
           {loading ? (
-            <p>⏳ טוען נתונים...</p>
+            <p>טוען נתונים...</p>
           ) : data.length === 0 ? (
-            <p>אין נתונים עדיין. התחל בהזנת מידע!</p>
+            <p>אין נתונים עדיין.</p>
           ) : (
             <div className="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>שם</th>
-                    <th>דוא״ל</th>
+                    <th>שם עובד</th>
+                    <th>דוא"ל</th>
                     <th>קטגוריה</th>
-                    <th>סכום</th>
+                    <th>יצרן</th>
+                    <th>דגם</th>
+                    <th>צבע</th>
+                    <th>מקום</th>
+                    <th>סיריאל</th>
                     <th>תאריך</th>
                     {isAdmin && <th>פעולות</th>}
                   </tr>
@@ -282,8 +360,12 @@ function App() {
                     <tr key={row.id}>
                       <td>{row.name}</td>
                       <td>{row.email}</td>
-                      <td>{row.category}</td>
-                      <td>₪{parseFloat(row.amount).toFixed(2)}</td>
+                      <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
+                      <td>{row.manufacturer || '-'}</td>
+                      <td>{row.model || '-'}</td>
+                      <td>{row.color || '-'}</td>
+                      <td>{row.storage || '-'}</td>
+                      <td>{row.serial_number || '-'}</td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                       {isAdmin && (
                         <td>
@@ -291,7 +373,7 @@ function App() {
                             onClick={() => handleDelete(row.id)}
                             className="btn btn-delete"
                           >
-                            🗑️ מחק
+                            מחק
                           </button>
                         </td>
                       )}
