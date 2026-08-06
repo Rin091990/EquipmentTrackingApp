@@ -152,6 +152,44 @@ const createTable = async () => {
       ADD COLUMN IF NOT EXISTS serial_number VARCHAR(255),
       ADD COLUMN IF NOT EXISTS inventory_serial VARCHAR(255)
     `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS item_history (
+        id SERIAL PRIMARY KEY,
+        item_id INTEGER,
+        serial_number VARCHAR(255),
+        inventory_serial VARCHAR(255),
+        field_name VARCHAR(100),
+        old_value TEXT,
+        new_value TEXT,
+        change_summary TEXT,
+        name VARCHAR(255),
+        email VARCHAR(255),
+        building VARCHAR(255),
+        office VARCHAR(255),
+        category VARCHAR(100),
+        manufacturer VARCHAR(255),
+        model VARCHAR(255),
+        color VARCHAR(100),
+        storage VARCHAR(50),
+        changed_by VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      ALTER TABLE item_history
+      ADD COLUMN IF NOT EXISTS change_summary TEXT,
+      ADD COLUMN IF NOT EXISTS name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS building VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS office VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS category VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS model VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS color VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS storage VARCHAR(50)
+    `);
     console.log('✅ טבלה "forms" מוכנה!');
   } catch (err) {
     console.error('❌ שגיאה ביצירת טבלה:', err.message);
@@ -359,6 +397,24 @@ app.get('/api/data', requireAuth, async (req, res) => {
   }
 });
 
+// API לקבלת היסטוריית פריט
+app.get('/api/history/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await client.query(
+      `SELECT *
+       FROM item_history
+       WHERE item_id = $1
+       ORDER BY created_at DESC`,
+      [id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API לעדכון רשומה קיימת
 app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -369,15 +425,34 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'חסרים נתונים לעדכון!' });
     }
 
-    const current = await client.query('SELECT category FROM forms WHERE id = $1', [id]);
+    const current = await client.query('SELECT * FROM forms WHERE id = $1', [id]);
 
     if (current.rowCount === 0) {
       return res.status(404).json({ error: 'הרשומה לא נמצאה' });
     }
 
-    if (current.rows[0].category === 'computer' && !inventorySerial) {
+    const currentRow = current.rows[0];
+
+    if (currentRow.category === 'computer' && !inventorySerial) {
       return res.status(400).json({ error: 'חסר סיריאל אינוונטר למחשב!' });
     }
+
+    const historyFields = [
+      { key: 'name', label: 'שם עובד', oldValue: currentRow.name, newValue: name },
+      { key: 'email', label: 'דוא"ל', oldValue: currentRow.email, newValue: email },
+      { key: 'building', label: 'מבנה', oldValue: currentRow.building, newValue: building },
+      { key: 'office', label: 'משרד', oldValue: currentRow.office, newValue: office },
+      {
+        key: 'inventory_serial',
+        label: 'סיריאל אינוונטר',
+        oldValue: currentRow.inventory_serial,
+        newValue: currentRow.category === 'computer' ? inventorySerial : currentRow.inventory_serial,
+      },
+    ];
+
+    const changedFields = historyFields.filter(
+      (field) => String(field.oldValue || '') !== String(field.newValue || '')
+    );
 
     const result = await client.query(
       `UPDATE forms
@@ -390,6 +465,57 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
        RETURNING *`,
       [name, email, building, office, inventorySerial, id]
     );
+
+    if (changedFields.length > 0) {
+      const updatedRow = result.rows[0];
+
+      await client.query(
+        `INSERT INTO item_history
+          (
+            item_id,
+            serial_number,
+            inventory_serial,
+            field_name,
+            old_value,
+            new_value,
+            change_summary,
+            name,
+            email,
+            building,
+            office,
+            category,
+            manufacturer,
+            model,
+            color,
+            storage,
+            changed_by
+          )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+        [
+          id,
+          updatedRow.serial_number,
+          updatedRow.inventory_serial,
+          changedFields.map((field) => field.label).join(', '),
+          changedFields
+            .map((field) => `${field.label}: ${field.oldValue || '-'}`)
+            .join(' | '),
+          changedFields
+            .map((field) => `${field.label}: ${field.newValue || '-'}`)
+            .join(' | '),
+          changedFields.map((field) => field.label).join(', '),
+          updatedRow.name,
+          updatedRow.email,
+          updatedRow.building,
+          updatedRow.office,
+          updatedRow.category,
+          updatedRow.manufacturer,
+          updatedRow.model,
+          updatedRow.color,
+          updatedRow.storage,
+          req.user?.username || 'admin',
+        ]
+      );
+    }
 
     res.json({ message: 'השינויים נשמרו בהצלחה!', row: result.rows[0] });
   } catch (err) {

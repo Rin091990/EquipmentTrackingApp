@@ -49,6 +49,10 @@ function App() {
   const [data, setData] = useState([]);
   const [officeAccessories, setOfficeAccessories] = useState([]);
   const [accessoryForm, setAccessoryForm] = useState(emptyAccessoryForm);
+  const [historyItem, setHistoryItem] = useState(null);
+  const [historyRows, setHistoryRows] = useState([]);
+  const [historyBackSection, setHistoryBackSection] = useState('');
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
@@ -187,6 +191,8 @@ function App() {
     setAuth(null);
     setData([]);
     setOfficeAccessories([]);
+    setHistoryItem(null);
+    setHistoryRows([]);
     setBuildingSearchTerm('');
     setSelectedSection('');
     setSelectedBuilding('');
@@ -229,7 +235,8 @@ function App() {
         selectedSection === 'newEquipment' ||
         selectedSection === 'buildings' ||
         selectedSection === 'buildingDetails' ||
-        selectedSection === 'officeDetails')
+        selectedSection === 'officeDetails' ||
+        selectedSection === 'itemHistory')
     ) {
       fetchData();
       if (selectedSection === 'officeDetails') {
@@ -401,6 +408,49 @@ function App() {
     setSelectedBuilding(String(row.building || selectedBuilding || '').trim());
     setSelectedOffice(office);
     setSelectedSection('officeDetails');
+  };
+
+  const openItemHistory = async (row) => {
+    setHistoryItem(row);
+    setHistoryRows([]);
+    setHistoryBackSection(selectedSection);
+    setSelectedSection('itemHistory');
+
+    try {
+      setHistoryLoading(true);
+      const response = await api.get(`/history/${row.id}`);
+      setHistoryRows(response.data);
+    } catch (err) {
+      alert('שגיאה בטעינת היסטוריה: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const renderSerialCell = (row) => {
+    if (!row.serial_number) return '-';
+
+    return (
+      <button type="button" className="history-link-button" onClick={() => openItemHistory(row)}>
+        {row.serial_number}
+      </button>
+    );
+  };
+
+  const renderInventorySerialCell = (row) => {
+    if (row.category !== 'computer') return '-';
+
+    if (editingId === row.id) {
+      return renderEditableCell(row, 'inventorySerial', '-', row.inventory_serial);
+    }
+
+    if (!row.inventory_serial) return '-';
+
+    return (
+      <button type="button" className="history-link-button" onClick={() => openItemHistory(row)}>
+        {row.inventory_serial}
+      </button>
+    );
   };
 
   const renderOfficeCell = (row) => {
@@ -684,8 +734,12 @@ function App() {
                           />
                         </td>
                       )}
-                      <td>{renderEditableCell(row, 'name')}</td>
-                      <td>{renderEditableCell(row, 'email')}</td>
+                      <td className="name-cell" title={row.name || ''}>
+                        {renderEditableCell(row, 'name')}
+                      </td>
+                      <td className="email-cell" title={row.email || ''}>
+                        <span className="email-cell-content">{renderEditableCell(row, 'email')}</span>
+                      </td>
                       <td>{renderEditableCell(row, 'building', selectedBuilding || '-')}</td>
                       <td>{renderOfficeCell(row)}</td>
                       <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
@@ -693,12 +747,8 @@ function App() {
                       <td>{row.model || '-'}</td>
                       <td>{row.color || '-'}</td>
                       <td>{row.storage || '-'}</td>
-                      <td>{row.serial_number || '-'}</td>
-                      <td>
-                        {row.category === 'computer'
-                          ? renderEditableCell(row, 'inventorySerial', '-', row.inventory_serial)
-                          : '-'}
-                      </td>
+                      <td>{renderSerialCell(row)}</td>
+                      <td>{renderInventorySerialCell(row)}</td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                       {isAdmin && (
                         <td className="table-actions">
@@ -819,8 +869,12 @@ function App() {
                           />
                         </td>
                       )}
-                      <td>{renderEditableCell(row, 'name')}</td>
-                      <td>{renderEditableCell(row, 'email')}</td>
+                      <td className="name-cell" title={row.name || ''}>
+                        {renderEditableCell(row, 'name')}
+                      </td>
+                      <td className="email-cell" title={row.email || ''}>
+                        <span className="email-cell-content">{renderEditableCell(row, 'email')}</span>
+                      </td>
                       <td>{renderEditableCell(row, 'building')}</td>
                       <td>{renderOfficeCell(row)}</td>
                       <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
@@ -828,12 +882,8 @@ function App() {
                       <td>{row.model || '-'}</td>
                       <td>{row.color || '-'}</td>
                       <td>{row.storage || '-'}</td>
-                      <td>{row.serial_number || '-'}</td>
-                      <td>
-                        {row.category === 'computer'
-                          ? renderEditableCell(row, 'inventorySerial', '-', row.inventory_serial)
-                          : '-'}
-                      </td>
+                      <td>{renderSerialCell(row)}</td>
+                      <td>{renderInventorySerialCell(row)}</td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                       {isAdmin && (
                         <td className="table-actions">
@@ -1028,6 +1078,116 @@ function App() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
+
+  if (selectedSection === 'itemHistory') {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <div>
+            <h1>היסטוריית פריט</h1>
+            <p>
+              סיריאל: {historyItem?.serial_number || '-'} | סיריאל אינוונטר:{' '}
+              {historyItem?.inventory_serial || '-'}
+            </p>
+          </div>
+
+          <div className="user-panel">
+            <button
+              type="button"
+              onClick={() => setSelectedSection(historyBackSection || 'general')}
+              className="btn btn-secondary"
+            >
+              חזרה
+            </button>
+            <button type="button" onClick={handleLogout} className="btn btn-secondary">
+              יציאה
+            </button>
+          </div>
+        </header>
+
+        <section className="table-section">
+          <div className="table-header">
+            <h2>שינויים בפריט ({historyRows.length})</h2>
+          </div>
+
+          {historyLoading ? (
+            <p>טוען היסטוריה...</p>
+          ) : historyRows.length === 0 ? (
+            <p>אין היסטוריה לפריט הזה עדיין.</p>
+          ) : (
+            <div className="table-wrapper history-table-wrapper">
+              <table className="history-table">
+                <colgroup>
+                  <col className="history-date-col" />
+                  <col className="history-changes-col" />
+                  <col className="history-name-col" />
+                  <col className="history-email-col" />
+                  <col className="history-building-col" />
+                  <col className="history-office-col" />
+                  <col className="history-category-col" />
+                  <col className="history-manufacturer-col" />
+                  <col className="history-model-col" />
+                  <col className="history-color-col" />
+                  <col className="history-storage-col" />
+                  <col className="history-serial-col" />
+                  <col className="history-inventory-col" />
+                  <col className="history-user-col" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>תאריך</th>
+                    <th>שינויים</th>
+                    <th>שם עובד</th>
+                    <th>דוא"ל</th>
+                    <th>מבנה</th>
+                    <th>משרד</th>
+                    <th>קטגוריה</th>
+                    <th>יצרן</th>
+                    <th>דגם</th>
+                    <th>צבע</th>
+                    <th>מקום</th>
+                    <th>סיריאל</th>
+                    <th>סיריאל אינוונטר</th>
+                    <th>בוצע על ידי</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{new Date(row.created_at).toLocaleString('he-IL')}</td>
+                      <td>{row.change_summary || row.field_name || '-'}</td>
+                      <td className="history-name-cell">{row.name || historyItem?.name || '-'}</td>
+                      <td className="history-email-cell" title={row.email || historyItem?.email || ''}>
+                        <span className="email-cell-content">
+                          {row.email || historyItem?.email || '-'}
+                        </span>
+                      </td>
+                      <td>{row.building || historyItem?.building || '-'}</td>
+                      <td>{row.office || historyItem?.office || '-'}</td>
+                      <td>
+                        {(row.category || historyItem?.category) === 'computer'
+                          ? 'מחשב'
+                          : (row.category || historyItem?.category) === 'phone'
+                            ? 'פלאפון'
+                            : '-'}
+                      </td>
+                      <td>{row.manufacturer || historyItem?.manufacturer || '-'}</td>
+                      <td>{row.model || historyItem?.model || '-'}</td>
+                      <td>{row.color || historyItem?.color || '-'}</td>
+                      <td>{row.storage || historyItem?.storage || '-'}</td>
+                      <td>{row.serial_number || '-'}</td>
+                      <td>{row.inventory_serial || '-'}</td>
+                      <td>{row.changed_by || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
@@ -1269,8 +1429,12 @@ function App() {
                               />
                             </td>
                           )}
-                          <td>{renderEditableCell(row, 'name')}</td>
-                          <td>{renderEditableCell(row, 'email')}</td>
+                          <td className="name-cell" title={row.name || ''}>
+                            {renderEditableCell(row, 'name')}
+                          </td>
+                          <td className="email-cell" title={row.email || ''}>
+                            <span className="email-cell-content">{renderEditableCell(row, 'email')}</span>
+                          </td>
                           <td>{renderEditableCell(row, 'building')}</td>
                           <td>{renderOfficeCell(row)}</td>
                           <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
@@ -1278,12 +1442,8 @@ function App() {
                           <td>{row.model || '-'}</td>
                           <td>{row.color || '-'}</td>
                           <td>{row.storage || '-'}</td>
-                          <td>{row.serial_number || '-'}</td>
-                          <td>
-                            {row.category === 'computer'
-                              ? renderEditableCell(row, 'inventorySerial', '-', row.inventory_serial)
-                              : '-'}
-                          </td>
+                          <td>{renderSerialCell(row)}</td>
+                          <td>{renderInventorySerialCell(row)}</td>
                           <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                           {isAdmin && (
                             <td className="table-actions">
