@@ -33,6 +33,7 @@ function App() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedBuilding, setSelectedBuilding] = useState('');
 
@@ -62,10 +63,19 @@ function App() {
   const selectedBuildingRows = useMemo(() => {
     if (!selectedBuilding) return [];
 
-    return data
-      .filter((row) => row.building?.trim() === selectedBuilding)
+    const normalizedSearch = buildingSearchTerm.trim().toLowerCase();
+    const rows = data.filter((row) => row.building?.trim() === selectedBuilding);
+    const filteredRows = normalizedSearch
+      ? rows.filter((row) =>
+          [row.name, row.email]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(normalizedSearch))
+        )
+      : rows;
+
+    return filteredRows
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [data, selectedBuilding]);
+  }, [buildingSearchTerm, data, selectedBuilding]);
 
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -114,6 +124,7 @@ function App() {
     localStorage.removeItem('equipmentAuth');
     setAuth(null);
     setData([]);
+    setBuildingSearchTerm('');
     setSelectedSection('');
     setSelectedBuilding('');
   }, []);
@@ -332,6 +343,7 @@ function App() {
                   className="building-button"
                   key={building}
                   onClick={() => {
+                    setBuildingSearchTerm('');
                     setSelectedBuilding(building);
                     setSelectedSection('buildingDetails');
                   }}
@@ -375,7 +387,16 @@ function App() {
         </header>
 
         <section className="table-section building-details-section">
-          <h2>הנתונים של מבנה {selectedBuilding} ({selectedBuildingRows.length})</h2>
+          <div className="table-header">
+            <h2>הנתונים של מבנה {selectedBuilding} ({selectedBuildingRows.length})</h2>
+            <input
+              type="search"
+              className="search-input"
+              placeholder="חיפוש לפי שם עובד או email"
+              value={buildingSearchTerm}
+              onChange={(e) => setBuildingSearchTerm(e.target.value)}
+            />
+          </div>
 
           {loading ? (
             <p>טוען נתונים...</p>
