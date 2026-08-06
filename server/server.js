@@ -97,6 +97,8 @@ const createTable = async () => {
         id SERIAL PRIMARY KEY,
         name VARCHAR(255),
         email VARCHAR(255),
+        building VARCHAR(255),
+        office VARCHAR(255),
         category VARCHAR(100),
         amount DECIMAL(10,2),
         manufacturer VARCHAR(255),
@@ -110,6 +112,8 @@ const createTable = async () => {
 
     await client.query(`
       ALTER TABLE forms
+      ADD COLUMN IF NOT EXISTS building VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS office VARCHAR(255),
       ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255),
       ADD COLUMN IF NOT EXISTS model VARCHAR(255),
       ADD COLUMN IF NOT EXISTS color VARCHAR(100),
@@ -146,11 +150,24 @@ app.post('/api/login', (req, res) => {
 // API להוספת מידע
 app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, email, category, manufacturer, model, color, storage, serialNumber } = req.body;
+    const {
+      name,
+      email,
+      building,
+      office,
+      category,
+      manufacturer,
+      model,
+      color,
+      storage,
+      serialNumber,
+    } = req.body;
     
     if (
       !name ||
       !email ||
+      !building ||
+      !office ||
       !category ||
       !manufacturer ||
       !model ||
@@ -166,11 +183,13 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
 
     await client.query(
       `INSERT INTO forms
-        (name, email, category, manufacturer, model, color, storage, serial_number)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        (name, email, building, office, category, manufacturer, model, color, storage, serial_number)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         name,
         email,
+        building,
+        office,
         category,
         manufacturer,
         model,
@@ -193,6 +212,8 @@ app.get('/api/export', requireAuth, async (req, res) => {
     const records = result.rows.map((row) => ({
       name: row.name,
       email: row.email,
+      building: row.building || '',
+      office: row.office || '',
       category: row.category,
       manufacturer: row.manufacturer || '',
       model: row.model || '',
