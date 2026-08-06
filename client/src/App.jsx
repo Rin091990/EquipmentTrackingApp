@@ -34,6 +34,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
+  const [selectedBuilding, setSelectedBuilding] = useState('');
 
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: API_URL });
@@ -57,6 +58,14 @@ function App() {
 
     return [...new Set(names)].sort((a, b) => a.localeCompare(b, 'he'));
   }, [data]);
+
+  const selectedBuildingRows = useMemo(() => {
+    if (!selectedBuilding) return [];
+
+    return data
+      .filter((row) => row.building?.trim() === selectedBuilding)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [data, selectedBuilding]);
 
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -106,6 +115,7 @@ function App() {
     setAuth(null);
     setData([]);
     setSelectedSection('');
+    setSelectedBuilding('');
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -129,7 +139,8 @@ function App() {
       auth?.token &&
       (selectedSection === 'general' ||
         selectedSection === 'newEquipment' ||
-        selectedSection === 'buildings')
+        selectedSection === 'buildings' ||
+        selectedSection === 'buildingDetails')
     ) {
       fetchData();
     }
@@ -316,7 +327,15 @@ function App() {
           ) : (
             <div className="buildings-grid">
               {buildings.map((building) => (
-                <button type="button" className="building-button" key={building}>
+                <button
+                  type="button"
+                  className="building-button"
+                  key={building}
+                  onClick={() => {
+                    setSelectedBuilding(building);
+                    setSelectedSection('buildingDetails');
+                  }}
+                >
                   {building}
                 </button>
               ))}
@@ -327,6 +346,88 @@ function App() {
         <section className="placeholder-section legacy-placeholder">
           <h2>מבנים</h2>
           <p>כאן נוסיף את ניהול המבנים בהמשך.</p>
+        </section>
+      </div>
+    );
+  }
+
+  if (selectedSection === 'buildingDetails') {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <div>
+            <h1>{selectedBuilding ? `מבנה ${selectedBuilding}` : 'מבנה'}</h1>
+            <p>רשומות ציוד לפי מבנה</p>
+          </div>
+
+          <div className="user-panel">
+            <button
+              type="button"
+              onClick={() => setSelectedSection('buildings')}
+              className="btn btn-secondary"
+            >
+              חזרה למבנים
+            </button>
+            <button type="button" onClick={handleLogout} className="btn btn-secondary">
+              יציאה
+            </button>
+          </div>
+        </header>
+
+        <section className="table-section building-details-section">
+          <h2>הנתונים של מבנה {selectedBuilding} ({selectedBuildingRows.length})</h2>
+
+          {loading ? (
+            <p>טוען נתונים...</p>
+          ) : selectedBuildingRows.length === 0 ? (
+            <p>אין רשומות למבנה הזה.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>שם עובד</th>
+                    <th>דוא"ל</th>
+                    <th>משרד</th>
+                    <th>קטגוריה</th>
+                    <th>יצרן</th>
+                    <th>דגם</th>
+                    <th>צבע</th>
+                    <th>מקום</th>
+                    <th>סיריאל</th>
+                    <th>תאריך</th>
+                    {isAdmin && <th>פעולות</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedBuildingRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.name}</td>
+                      <td>{row.email}</td>
+                      <td>{row.office || '-'}</td>
+                      <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
+                      <td>{row.manufacturer || '-'}</td>
+                      <td>{row.model || '-'}</td>
+                      <td>{row.color || '-'}</td>
+                      <td>{row.storage || '-'}</td>
+                      <td>{row.serial_number || '-'}</td>
+                      <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
+                      {isAdmin && (
+                        <td>
+                          <button
+                            onClick={() => handleDelete(row.id)}
+                            className="btn btn-delete"
+                          >
+                            מחק
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
     );
