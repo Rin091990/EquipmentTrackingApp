@@ -20,7 +20,7 @@ const emptyForm = {
   category: 'computer',
   manufacturer: '',
   model: '',
-  color: '',
+  color: 'שחור',
   storage: '512GB',
   serialNumber: '',
   inventorySerial: '',
@@ -37,6 +37,16 @@ function App() {
   const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedBuilding, setSelectedBuilding] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    building: '',
+    office: '',
+    inventorySerial: '',
+  });
+  const [selectedActionId, setSelectedActionId] = useState(null);
+  const [activeEditField, setActiveEditField] = useState(null);
 
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: API_URL });
@@ -167,7 +177,7 @@ function App() {
         ...form,
         category: value,
         storage: value === 'computer' ? '512GB' : '256GB',
-        color: value === 'computer' ? '' : form.color,
+        color: value === 'computer' ? 'שחור' : '',
         inventorySerial: value === 'computer' ? form.inventorySerial : '',
       });
       return;
@@ -188,6 +198,115 @@ function App() {
       fetchData();
     } catch (err) {
       alert('שגיאה: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const startEdit = (row) => {
+    if (!isAdmin) return;
+
+    setSelectedActionId(row.id);
+    setEditingId(row.id);
+    setActiveEditField(null);
+    setEditForm({
+      name: row.name || '',
+      email: row.email || '',
+      building: row.building || '',
+      office: row.office || '',
+      inventorySerial: row.inventory_serial || '',
+    });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setSelectedActionId(null);
+    setActiveEditField(null);
+    setEditForm({
+      name: '',
+      email: '',
+      building: '',
+      office: '',
+      inventorySerial: '',
+    });
+  };
+
+  const saveEdit = async (id) => {
+    if (!isAdmin) return;
+
+    try {
+      const response = await api.put(`/update/${id}`, editForm);
+      if (response.data?.row) {
+        setData((currentData) =>
+          currentData.map((row) => (row.id === id ? response.data.row : row))
+        );
+      }
+      await fetchData();
+      cancelEdit();
+      alert('השינויים נשמרו בהצלחה!');
+    } catch (err) {
+      alert('שגיאה: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const renderEditableCell = (row, field, fallback = '-', rowValue = row[field]) => {
+    if (editingId !== row.id) {
+      return rowValue || fallback;
+    }
+
+    if (activeEditField === field) {
+      return (
+        <input
+          type={field === 'email' ? 'email' : 'text'}
+          name={field}
+          value={editForm[field]}
+          onChange={handleEditChange}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              saveEdit(row.id);
+            }
+
+            if (e.key === 'Escape') {
+              setActiveEditField(null);
+            }
+          }}
+          className={`table-edit-input ${field === 'office' ? 'table-edit-input-office' : ''} ${
+            field === 'inventorySerial' ? 'table-edit-input-inventory' : ''
+          }`}
+          autoFocus
+        />
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className="table-edit-value"
+        onClick={() => setActiveEditField(field)}
+      >
+        {editForm[field] || fallback}
+      </button>
+    );
+  };
+
+  const toggleRowActions = (rowId) => {
+    if (!isAdmin) return;
+
+    if (selectedActionId === rowId) {
+      setSelectedActionId(null);
+      if (editingId === rowId) {
+        cancelEdit();
+      }
+      return;
+    }
+
+    setSelectedActionId(rowId);
+    if (editingId && editingId !== rowId) {
+      cancelEdit();
+      setSelectedActionId(rowId);
     }
   };
 
@@ -410,6 +529,7 @@ function App() {
               <table>
                 <thead>
                   <tr>
+                    {isAdmin && <th className="select-column"></th>}
                     <th>שם עובד</th>
                     <th>דוא"ל</th>
                     <th>מבנה</th>
@@ -428,26 +548,72 @@ function App() {
                 <tbody>
                   {selectedBuildingRows.map((row) => (
                     <tr key={row.id}>
-                      <td>{row.name}</td>
-                      <td>{row.email}</td>
-                      <td>{row.building || selectedBuilding || '-'}</td>
-                      <td>{row.office || '-'}</td>
+                      {isAdmin && (
+                        <td className="select-column">
+                          <input
+                            type="checkbox"
+                            checked={selectedActionId === row.id}
+                            onChange={() => toggleRowActions(row.id)}
+                            className="row-action-checkbox"
+                            aria-label="בחר פעולות לרשומה"
+                          />
+                        </td>
+                      )}
+                      <td>{renderEditableCell(row, 'name')}</td>
+                      <td>{renderEditableCell(row, 'email')}</td>
+                      <td>{renderEditableCell(row, 'building', selectedBuilding || '-')}</td>
+                      <td>{renderEditableCell(row, 'office')}</td>
                       <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
                       <td>{row.manufacturer || '-'}</td>
                       <td>{row.model || '-'}</td>
                       <td>{row.color || '-'}</td>
                       <td>{row.storage || '-'}</td>
                       <td>{row.serial_number || '-'}</td>
-                      <td>{row.inventory_serial || '-'}</td>
+                      <td>
+                        {row.category === 'computer'
+                          ? renderEditableCell(row, 'inventorySerial', '-', row.inventory_serial)
+                          : '-'}
+                      </td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                       {isAdmin && (
-                        <td>
-                          <button
-                            onClick={() => handleDelete(row.id)}
-                            className="btn btn-delete"
-                          >
-                            מחק
-                          </button>
+                        <td className="table-actions">
+                          {editingId === row.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => saveEdit(row.id)}
+                                className="btn btn-confirm"
+                              >
+                                אישור
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEdit}
+                                className="btn btn-secondary"
+                              >
+                                ביטול
+                              </button>
+                            </>
+                          ) : selectedActionId === row.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => startEdit(row)}
+                                className="btn btn-edit"
+                              >
+                                עריכה
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(row.id)}
+                                className="btn btn-delete"
+                              >
+                                מחק
+                              </button>
+                            </>
+                          ) : (
+                            <span className="empty-actions">-</span>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -665,6 +831,7 @@ function App() {
                   <table>
                     <thead>
                       <tr>
+                        {isAdmin && <th className="select-column"></th>}
                         <th>שם עובד</th>
                         <th>דוא"ל</th>
                         <th>מבנה</th>
@@ -683,26 +850,72 @@ function App() {
                     <tbody>
                       {filteredData.map((row) => (
                         <tr key={row.id}>
-                          <td>{row.name}</td>
-                          <td>{row.email}</td>
-                          <td>{row.building || '-'}</td>
-                          <td>{row.office || '-'}</td>
+                          {isAdmin && (
+                            <td className="select-column">
+                              <input
+                                type="checkbox"
+                                checked={selectedActionId === row.id}
+                                onChange={() => toggleRowActions(row.id)}
+                                className="row-action-checkbox"
+                                aria-label="בחר פעולות לרשומה"
+                              />
+                            </td>
+                          )}
+                          <td>{renderEditableCell(row, 'name')}</td>
+                          <td>{renderEditableCell(row, 'email')}</td>
+                          <td>{renderEditableCell(row, 'building')}</td>
+                          <td>{renderEditableCell(row, 'office')}</td>
                           <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
                           <td>{row.manufacturer || '-'}</td>
                           <td>{row.model || '-'}</td>
                           <td>{row.color || '-'}</td>
                           <td>{row.storage || '-'}</td>
                           <td>{row.serial_number || '-'}</td>
-                          <td>{row.inventory_serial || '-'}</td>
+                          <td>
+                            {row.category === 'computer'
+                              ? renderEditableCell(row, 'inventorySerial', '-', row.inventory_serial)
+                              : '-'}
+                          </td>
                           <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                           {isAdmin && (
-                            <td>
-                              <button
-                                onClick={() => handleDelete(row.id)}
-                                className="btn btn-delete"
-                              >
-                                מחק
-                              </button>
+                            <td className="table-actions">
+                              {editingId === row.id ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => saveEdit(row.id)}
+                                    className="btn btn-confirm"
+                                  >
+                                    אישור
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={cancelEdit}
+                                    className="btn btn-secondary"
+                                  >
+                                    ביטול
+                                  </button>
+                                </>
+                              ) : selectedActionId === row.id ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => startEdit(row)}
+                                    className="btn btn-edit"
+                                  >
+                                    עריכה
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelete(row.id)}
+                                    className="btn btn-delete"
+                                  >
+                                    מחק
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="empty-actions">-</span>
+                              )}
                             </td>
                           )}
                         </tr>

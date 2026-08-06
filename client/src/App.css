@@ -12,7 +12,7 @@ body {
 }
 
 .app-container {
-  max-width: 1200px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -244,6 +244,7 @@ body {
   cursor: pointer;
   transition: all 0.3s;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -293,8 +294,96 @@ body {
   background: #da190b;
 }
 
+.btn-edit {
+  background: #667eea;
+  color: white;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-edit:hover {
+  background: #5568d3;
+}
+
+.btn-confirm {
+  background: #2eaf5d;
+  color: white;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-confirm:hover {
+  background: #238d49;
+}
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 118px;
+  white-space: nowrap;
+}
+
+.row-action-checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.select-column {
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  text-align: center;
+}
+
+.empty-actions {
+  color: #999;
+}
+
+.table-edit-input {
+  width: 130px;
+  max-width: 100%;
+  padding: 7px 8px;
+  border: 1px solid #cfd4dc;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.table-edit-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 5px rgba(102, 126, 234, 0.25);
+}
+
+.table-edit-input-office {
+  width: 44px;
+}
+
+.table-edit-input-inventory {
+  width: 9ch;
+}
+
+.table-edit-value {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: inherit;
+  cursor: text;
+  font: inherit;
+  padding: 4px 6px;
+  text-align: right;
+}
+
+.table-edit-value:hover {
+  background: #f3f5ff;
+  border-color: #d8ddff;
+}
+
 .table-wrapper {
-  overflow-x: auto;
+  overflow-x: visible;
 }
 
 .table-header {
@@ -323,6 +412,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
+  table-layout: fixed;
 }
 
 table thead {
@@ -330,16 +420,20 @@ table thead {
 }
 
 table th {
-  padding: 12px;
+  padding: 10px 7px;
   text-align: right;
   font-weight: 600;
+  font-size: 13px;
   color: #333;
   border-bottom: 2px solid #ddd;
+  overflow-wrap: anywhere;
 }
 
 table td {
-  padding: 12px;
+  padding: 10px 7px;
+  font-size: 13px;
   border-bottom: 1px solid #eee;
+  overflow-wrap: anywhere;
 }
 
 table tbody tr:hover {

@@ -122,6 +122,13 @@ const createTable = async () => {
       ADD COLUMN IF NOT EXISTS serial_number VARCHAR(255),
       ADD COLUMN IF NOT EXISTS inventory_serial VARCHAR(255)
     `);
+
+    await client.query(`
+      UPDATE forms
+      SET color = 'שחור'
+      WHERE category = 'computer'
+        AND (color IS NULL OR TRIM(color) = '')
+    `);
     console.log('✅ טבלה "forms" מוכנה!');
   } catch (err) {
     console.error('❌ שגיאה ביצירת טבלה:', err.message);
@@ -200,7 +207,7 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
         category,
         manufacturer,
         model,
-        category === 'phone' ? color : null,
+        category === 'computer' ? 'שחור' : color,
         storage,
         serialNumber,
         category === 'computer' ? inventorySerial : null,
@@ -269,6 +276,44 @@ app.get('/api/data', requireAuth, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API לעדכון רשומה קיימת
+app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, building, office, inventorySerial } = req.body;
+
+    if (!name || !email || !building || !office) {
+      return res.status(400).json({ error: 'חסרים נתונים לעדכון!' });
+    }
+
+    const current = await client.query('SELECT category FROM forms WHERE id = $1', [id]);
+
+    if (current.rowCount === 0) {
+      return res.status(404).json({ error: 'הרשומה לא נמצאה' });
+    }
+
+    if (current.rows[0].category === 'computer' && !inventorySerial) {
+      return res.status(400).json({ error: 'חסר סיריאל אינוונטר למחשב!' });
+    }
+
+    const result = await client.query(
+      `UPDATE forms
+       SET name = $1,
+           email = $2,
+           building = $3,
+           office = $4,
+           inventory_serial = CASE WHEN category = 'computer' THEN $5 ELSE inventory_serial END
+       WHERE id = $6
+       RETURNING *`,
+      [name, email, building, office, inventorySerial, id]
+    );
+
+    res.json({ message: 'השינויים נשמרו בהצלחה!', row: result.rows[0] });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
