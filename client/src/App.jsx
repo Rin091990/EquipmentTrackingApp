@@ -37,6 +37,7 @@ function App() {
   const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedBuilding, setSelectedBuilding] = useState('');
+  const [selectedOffice, setSelectedOffice] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -87,6 +88,21 @@ function App() {
     return filteredRows
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [buildingSearchTerm, data, selectedBuilding]);
+
+  const selectedOfficeRows = useMemo(() => {
+    if (!selectedOffice) return [];
+
+    return data
+      .filter((row) => {
+        const sameOffice = String(row.office || '').trim() === selectedOffice;
+        const sameBuilding = selectedBuilding
+          ? String(row.building || '').trim() === selectedBuilding
+          : true;
+
+        return sameOffice && sameBuilding;
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [data, selectedBuilding, selectedOffice]);
 
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -139,6 +155,7 @@ function App() {
     setBuildingSearchTerm('');
     setSelectedSection('');
     setSelectedBuilding('');
+    setSelectedOffice('');
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -163,7 +180,8 @@ function App() {
       (selectedSection === 'general' ||
         selectedSection === 'newEquipment' ||
         selectedSection === 'buildings' ||
-        selectedSection === 'buildingDetails')
+        selectedSection === 'buildingDetails' ||
+        selectedSection === 'officeDetails')
     ) {
       fetchData();
     }
@@ -288,6 +306,29 @@ function App() {
         onClick={() => setActiveEditField(field)}
       >
         {editForm[field] || fallback}
+      </button>
+    );
+  };
+
+  const openOfficeDetails = (row) => {
+    const office = String(row.office || '').trim();
+    if (!office) return;
+
+    setSelectedBuilding(String(row.building || selectedBuilding || '').trim());
+    setSelectedOffice(office);
+    setSelectedSection('officeDetails');
+  };
+
+  const renderOfficeCell = (row) => {
+    if (editingId === row.id) {
+      return renderEditableCell(row, 'office');
+    }
+
+    if (!row.office) return '-';
+
+    return (
+      <button type="button" className="office-link-button" onClick={() => openOfficeDetails(row)}>
+        {row.office}
       </button>
     );
   };
@@ -542,7 +583,7 @@ function App() {
                     <th>סיריאל</th>
                     <th>סיריאל אינוונטר</th>
                     <th>תאריך</th>
-                    {isAdmin && <th>פעולות</th>}
+                    {isAdmin && <th className="actions-column">פעולות</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -562,7 +603,142 @@ function App() {
                       <td>{renderEditableCell(row, 'name')}</td>
                       <td>{renderEditableCell(row, 'email')}</td>
                       <td>{renderEditableCell(row, 'building', selectedBuilding || '-')}</td>
-                      <td>{renderEditableCell(row, 'office')}</td>
+                      <td>{renderOfficeCell(row)}</td>
+                      <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
+                      <td>{row.manufacturer || '-'}</td>
+                      <td>{row.model || '-'}</td>
+                      <td>{row.color || '-'}</td>
+                      <td>{row.storage || '-'}</td>
+                      <td>{row.serial_number || '-'}</td>
+                      <td>
+                        {row.category === 'computer'
+                          ? renderEditableCell(row, 'inventorySerial', '-', row.inventory_serial)
+                          : '-'}
+                      </td>
+                      <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
+                      {isAdmin && (
+                        <td className="table-actions">
+                          {editingId === row.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => saveEdit(row.id)}
+                                className="btn btn-confirm"
+                              >
+                                אישור
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEdit}
+                                className="btn btn-secondary"
+                              >
+                                ביטול
+                              </button>
+                            </>
+                          ) : selectedActionId === row.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => startEdit(row)}
+                                className="btn btn-edit"
+                              >
+                                עריכה
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(row.id)}
+                                className="btn btn-delete"
+                              >
+                                מחק
+                              </button>
+                            </>
+                          ) : (
+                            <span className="empty-actions">-</span>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
+
+  if (selectedSection === 'officeDetails') {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <div>
+            <h1>משרד {selectedOffice}</h1>
+            <p>{selectedBuilding ? `ציוד במבנה ${selectedBuilding}` : 'ציוד לפי משרד'}</p>
+          </div>
+
+          <div className="user-panel">
+            <button
+              type="button"
+              onClick={() => setSelectedSection(selectedBuilding ? 'buildingDetails' : 'general')}
+              className="btn btn-secondary"
+            >
+              חזרה
+            </button>
+            <button type="button" onClick={handleLogout} className="btn btn-secondary">
+              יציאה
+            </button>
+          </div>
+        </header>
+
+        <section className="table-section building-details-section">
+          <div className="table-header">
+            <h2>הציוד במשרד {selectedOffice} ({selectedOfficeRows.length})</h2>
+          </div>
+
+          {loading ? (
+            <p>טוען נתונים...</p>
+          ) : selectedOfficeRows.length === 0 ? (
+            <p>אין ציוד במשרד הזה.</p>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    {isAdmin && <th className="select-column"></th>}
+                    <th>שם עובד</th>
+                    <th>דוא"ל</th>
+                    <th>מבנה</th>
+                    <th>משרד</th>
+                    <th>קטגוריה</th>
+                    <th>יצרן</th>
+                    <th>דגם</th>
+                    <th>צבע</th>
+                    <th>מקום</th>
+                    <th>סיריאל</th>
+                    <th>סיריאל אינוונטר</th>
+                    <th>תאריך</th>
+                    {isAdmin && <th className="actions-column">פעולות</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedOfficeRows.map((row) => (
+                    <tr key={row.id}>
+                      {isAdmin && (
+                        <td className="select-column">
+                          <input
+                            type="checkbox"
+                            checked={selectedActionId === row.id}
+                            onChange={() => toggleRowActions(row.id)}
+                            className="row-action-checkbox"
+                            aria-label="בחר פעולות לרשומה"
+                          />
+                        </td>
+                      )}
+                      <td>{renderEditableCell(row, 'name')}</td>
+                      <td>{renderEditableCell(row, 'email')}</td>
+                      <td>{renderEditableCell(row, 'building')}</td>
+                      <td>{renderOfficeCell(row)}</td>
                       <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
                       <td>{row.manufacturer || '-'}</td>
                       <td>{row.model || '-'}</td>
@@ -844,7 +1020,7 @@ function App() {
                         <th>סיריאל</th>
                         <th>סיריאל אינוונטר</th>
                         <th>תאריך</th>
-                        {isAdmin && <th>פעולות</th>}
+                        {isAdmin && <th className="actions-column">פעולות</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -864,7 +1040,7 @@ function App() {
                           <td>{renderEditableCell(row, 'name')}</td>
                           <td>{renderEditableCell(row, 'email')}</td>
                           <td>{renderEditableCell(row, 'building')}</td>
-                          <td>{renderEditableCell(row, 'office')}</td>
+                          <td>{renderOfficeCell(row)}</td>
                           <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
                           <td>{row.manufacturer || '-'}</td>
                           <td>{row.model || '-'}</td>
