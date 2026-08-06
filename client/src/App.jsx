@@ -15,6 +15,8 @@ function getSavedAuth() {
 const emptyForm = {
   name: '',
   email: '',
+  building: '',
+  office: '',
   category: 'computer',
   manufacturer: '',
   model: '',
@@ -46,12 +48,23 @@ function App() {
   const isAdmin = auth?.user?.role === 'admin';
   const isComputer = form.category === 'computer';
   const isPhone = form.category === 'phone';
+  const showEquipmentForm = isAdmin && selectedSection === 'newEquipment';
+  const showDataTable = selectedSection === 'general';
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     const rows = normalizedSearch
       ? data.filter((row) =>
-          [row.name, row.email, row.category, row.manufacturer, row.model, row.serial_number]
+          [
+            row.name,
+            row.email,
+            row.building,
+            row.office,
+            row.category,
+            row.manufacturer,
+            row.model,
+            row.serial_number,
+          ]
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(normalizedSearch))
         )
@@ -104,7 +117,7 @@ function App() {
   }, [api, handleLogout]);
 
   useEffect(() => {
-    if (auth?.token && selectedSection === 'general') {
+    if (auth?.token && (selectedSection === 'general' || selectedSection === 'newEquipment')) {
       fetchData();
     }
   }, [auth?.token, fetchData, selectedSection]);
@@ -113,12 +126,12 @@ function App() {
     const { name, value } = e.target;
 
     if (name === 'category') {
-      setForm((prev) => ({
-        ...prev,
+      setForm({
+        ...form,
         category: value,
         storage: value === 'computer' ? '512GB' : '256GB',
-        color: value === 'computer' ? '' : prev.color,
-      }));
+        color: value === 'computer' ? '' : form.color,
+      });
       return;
     }
 
@@ -218,15 +231,15 @@ function App() {
       <div className="app-container">
         <header className="header">
           <div>
-            <h1>׳׳¢׳¨׳›׳× ׳ ׳™׳”׳•׳ ׳¦׳™׳•׳“</h1>
-            <p>׳‘׳—׳¨ ׳׳–׳•׳¨ ׳¢׳‘׳•׳“׳”</p>
+            <h1>מערכת ניהול ציוד</h1>
+            <p>בחר אזור עבודה</p>
           </div>
 
           <div className="user-panel">
             <span>{auth.user.username}</span>
             <strong>{isAdmin ? 'admin' : 'viewer'}</strong>
             <button type="button" onClick={handleLogout} className="btn btn-secondary">
-              ׳™׳¦׳™׳׳”
+              יציאה
             </button>
           </div>
         </header>
@@ -235,9 +248,9 @@ function App() {
           <button
             type="button"
             className="section-button"
-            onClick={() => setSelectedSection('general')}
+            onClick={() => setSelectedSection('newEquipment')}
           >
-            כללי
+            ציוד חדש
           </button>
           <button
             type="button"
@@ -245,6 +258,13 @@ function App() {
             onClick={() => setSelectedSection('buildings')}
           >
             מבנים
+          </button>
+          <button
+            type="button"
+            className="section-button"
+            onClick={() => setSelectedSection('general')}
+          >
+            כללי
           </button>
         </section>
       </div>
@@ -306,10 +326,10 @@ function App() {
         </div>
       </header>
 
-      <div className="main-content">
-        {isAdmin && (
+      <div className={selectedSection === 'newEquipment' ? 'main-content new-equipment-content' : 'main-content'}>
+        {showEquipmentForm && (
           <section className="form-section">
-            <h2>הזנת מידע חדש</h2>
+            <h2>הזנת מידע</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>שם עובד:</label>
@@ -330,6 +350,30 @@ function App() {
                   name="email"
                   placeholder="הזן דוא״ל"
                   value={form.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>מבנה:</label>
+                <input
+                  type="text"
+                  name="building"
+                  placeholder="הזן מבנה"
+                  value={form.building}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>משרד:</label>
+                <input
+                  type="text"
+                  name="office"
+                  placeholder="הזן משרד"
+                  value={form.office}
                   onChange={handleChange}
                   required
                 />
@@ -419,74 +463,82 @@ function App() {
           </section>
         )}
 
-        <section className={isAdmin ? 'export-section' : 'export-section viewer-export'}>
-          <button onClick={handleExport} className="btn btn-export">
-            ייצא ל-Excel
-          </button>
-        </section>
+        {showDataTable && (
+          <>
+            <section className="export-section viewer-export">
+              <button onClick={handleExport} className="btn btn-export">
+                ייצא ל-Excel
+              </button>
+            </section>
 
-        <section className="table-section">
-          <div className="table-header">
-            <h2>הנתונים השמורים ({filteredData.length})</h2>
-            <input
-              type="search"
-              className="search-input"
-              placeholder="חיפוש לפי שם או מילת מפתח"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+            <section className="table-section">
+              <div className="table-header">
+                <h2>הנתונים השמורים ({filteredData.length})</h2>
+                <input
+                  type="search"
+                  className="search-input"
+                  placeholder="חיפוש לפי שם או מילת מפתח"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
 
-          {loading ? (
-            <p>טוען נתונים...</p>
-          ) : filteredData.length === 0 ? (
-            <p>אין נתונים עדיין.</p>
-          ) : (
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>שם עובד</th>
-                    <th>דוא"ל</th>
-                    <th>קטגוריה</th>
-                    <th>יצרן</th>
-                    <th>דגם</th>
-                    <th>צבע</th>
-                    <th>מקום</th>
-                    <th>סיריאל</th>
-                    <th>תאריך</th>
-                    {isAdmin && <th>פעולות</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredData.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.name}</td>
-                      <td>{row.email}</td>
-                      <td>{row.category === 'computer' ? 'מחשב' : row.category === 'phone' ? 'פלאפון' : (row.category || '-')}</td>
-                      <td>{row.manufacturer || '-'}</td>
-                      <td>{row.model || '-'}</td>
-                      <td>{row.color || '-'}</td>
-                      <td>{row.storage || '-'}</td>
-                      <td>{row.serial_number || '-'}</td>
-                      <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
-                      {isAdmin && (
-                        <td>
-                          <button
-                            onClick={() => handleDelete(row.id)}
-                            className="btn btn-delete"
-                          >
-                            מחק
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+              {loading ? (
+                <p>טוען נתונים...</p>
+              ) : filteredData.length === 0 ? (
+                <p>אין נתונים עדיין.</p>
+              ) : (
+                <div className="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>שם עובד</th>
+                        <th>דוא"ל</th>
+                        <th>מבנה</th>
+                        <th>משרד</th>
+                        <th>קטגוריה</th>
+                        <th>יצרן</th>
+                        <th>דגם</th>
+                        <th>צבע</th>
+                        <th>מקום</th>
+                        <th>סיריאל</th>
+                        <th>תאריך</th>
+                        {isAdmin && <th>פעולות</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredData.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.name}</td>
+                          <td>{row.email}</td>
+                          <td>{row.building || '-'}</td>
+                          <td>{row.office || '-'}</td>
+                          <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
+                          <td>{row.manufacturer || '-'}</td>
+                          <td>{row.model || '-'}</td>
+                          <td>{row.color || '-'}</td>
+                          <td>{row.storage || '-'}</td>
+                          <td>{row.serial_number || '-'}</td>
+                          <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
+                          {isAdmin && (
+                            <td>
+                              <button
+                                onClick={() => handleDelete(row.id)}
+                                className="btn btn-delete"
+                              >
+                                מחק
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </div>
   );
