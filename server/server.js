@@ -106,6 +106,7 @@ const createTable = async () => {
         color VARCHAR(100),
         storage VARCHAR(50),
         serial_number VARCHAR(255),
+        inventory_serial VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -118,7 +119,8 @@ const createTable = async () => {
       ADD COLUMN IF NOT EXISTS model VARCHAR(255),
       ADD COLUMN IF NOT EXISTS color VARCHAR(100),
       ADD COLUMN IF NOT EXISTS storage VARCHAR(50),
-      ADD COLUMN IF NOT EXISTS serial_number VARCHAR(255)
+      ADD COLUMN IF NOT EXISTS serial_number VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS inventory_serial VARCHAR(255)
     `);
     console.log('✅ טבלה "forms" מוכנה!');
   } catch (err) {
@@ -161,6 +163,7 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
       color,
       storage,
       serialNumber,
+      inventorySerial,
     } = req.body;
     
     if (
@@ -181,10 +184,14 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'חסר צבע לפלאפון!' });
     }
 
+    if (category === 'computer' && !inventorySerial) {
+      return res.status(400).json({ error: 'חסר סיריאל אינוונטר למחשב!' });
+    }
+
     await client.query(
       `INSERT INTO forms
-        (name, email, building, office, category, manufacturer, model, color, storage, serial_number)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        (name, email, building, office, category, manufacturer, model, color, storage, serial_number, inventory_serial)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         name,
         email,
@@ -196,6 +203,7 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
         category === 'phone' ? color : null,
         storage,
         serialNumber,
+        category === 'computer' ? inventorySerial : null,
       ]
     );
     res.status(201).json({ message: '✅ נשמר בהצלחה!' });
@@ -220,6 +228,7 @@ app.get('/api/export', requireAuth, async (req, res) => {
       color: row.color || '',
       storage: row.storage || '',
       serial_number: row.serial_number || '',
+      inventory_serial: row.inventory_serial || '',
       created_at: row.created_at,
     }));
 
