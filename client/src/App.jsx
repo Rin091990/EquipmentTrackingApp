@@ -26,12 +26,29 @@ const emptyForm = {
   inventorySerial: '',
 };
 
+const emptyAccessoryForm = {
+  type: 'monitor',
+  manufacturer: '',
+  model: '',
+  size: '24',
+  serialNumber: '',
+  inventorySerial: '',
+};
+
+const accessoryTypeLabels = {
+  monitor: 'מסך',
+  printer: 'מדפסת',
+  dockingStation: 'תחנת עגינה',
+};
+
 function App() {
   const [auth, setAuth] = useState(getSavedAuth);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [data, setData] = useState([]);
+  const [officeAccessories, setOfficeAccessories] = useState([]);
+  const [accessoryForm, setAccessoryForm] = useState(emptyAccessoryForm);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
@@ -48,6 +65,10 @@ function App() {
   });
   const [selectedActionId, setSelectedActionId] = useState(null);
   const [activeEditField, setActiveEditField] = useState(null);
+  const isMonitorAccessory = accessoryForm.type === 'monitor';
+  const isPrinterAccessory = accessoryForm.type === 'printer';
+  const isDockingStationAccessory = accessoryForm.type === 'dockingStation';
+  const showAccessorySerialFields = isMonitorAccessory || isDockingStationAccessory;
 
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: API_URL });
@@ -104,6 +125,19 @@ function App() {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [data, selectedBuilding, selectedOffice]);
 
+  const selectedOfficeAccessories = useMemo(() => {
+    if (!selectedOffice) return [];
+
+    return officeAccessories.filter((item) => {
+      const sameOffice = String(item.office || '').trim() === selectedOffice;
+      const sameBuilding = selectedBuilding
+        ? String(item.building || '').trim() === selectedBuilding
+        : true;
+
+      return sameOffice && sameBuilding;
+    });
+  }, [officeAccessories, selectedBuilding, selectedOffice]);
+
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -152,6 +186,7 @@ function App() {
     localStorage.removeItem('equipmentAuth');
     setAuth(null);
     setData([]);
+    setOfficeAccessories([]);
     setBuildingSearchTerm('');
     setSelectedSection('');
     setSelectedBuilding('');
@@ -174,6 +209,19 @@ function App() {
     }
   }, [api, handleLogout]);
 
+  const fetchOfficeAccessories = useCallback(async () => {
+    try {
+      const response = await api.get('/office-accessories');
+      setOfficeAccessories(response.data);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        handleLogout();
+      } else {
+        console.error('שגיאה בטעינת ציוד נלווה:', err);
+      }
+    }
+  }, [api, handleLogout]);
+
   useEffect(() => {
     if (
       auth?.token &&
@@ -184,8 +232,11 @@ function App() {
         selectedSection === 'officeDetails')
     ) {
       fetchData();
+      if (selectedSection === 'officeDetails') {
+        fetchOfficeAccessories();
+      }
     }
-  }, [auth?.token, fetchData, selectedSection]);
+  }, [auth?.token, fetchData, fetchOfficeAccessories, selectedSection]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -214,6 +265,39 @@ function App() {
       alert('המידע נשמר בהצלחה!');
       setForm(emptyForm);
       fetchData();
+    } catch (err) {
+      alert('שגיאה: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleAccessoryChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === 'type') {
+      setAccessoryForm({
+        ...emptyAccessoryForm,
+        type: value,
+      });
+      return;
+    }
+
+    setAccessoryForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleAccessorySubmit = async (e) => {
+    e.preventDefault();
+
+    if (!isAdmin || !selectedOffice) return;
+
+    try {
+      const response = await api.post('/office-accessories', {
+        ...accessoryForm,
+        building: selectedBuilding,
+        office: selectedOffice,
+      });
+      setOfficeAccessories((current) => [response.data.row, ...current]);
+      setAccessoryForm(emptyAccessoryForm);
+      alert('הציוד הנלווה נשמר בהצלחה!');
     } catch (err) {
       alert('שגיאה: ' + (err.response?.data?.error || err.message));
     }
@@ -796,6 +880,154 @@ function App() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </section>
+
+        <section className="table-section accessory-section">
+          <div className="table-header">
+            <h2>ציוד נלווה במשרד {selectedOffice} ({selectedOfficeAccessories.length})</h2>
+          </div>
+
+          {isAdmin && (
+            <form className="accessory-form" onSubmit={handleAccessorySubmit}>
+              <div className="form-group">
+                <label>סוג ציוד:</label>
+                <select
+                  name="type"
+                  value={accessoryForm.type}
+                  onChange={handleAccessoryChange}
+                >
+                  <option value="monitor">מסך</option>
+                  <option value="printer">מדפסת</option>
+                  <option value="dockingStation">תחנת עגינה</option>
+                </select>
+              </div>
+
+              {isMonitorAccessory && (
+                <div className="form-group">
+                  <label>גודל:</label>
+                  <select
+                    name="size"
+                    value={accessoryForm.size}
+                    onChange={handleAccessoryChange}
+                  >
+                    <option value="24">24</option>
+                    <option value="27">27</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>יצרן:</label>
+                <input
+                  type="text"
+                  name="manufacturer"
+                  placeholder="הזן יצרן"
+                  value={accessoryForm.manufacturer}
+                  onChange={handleAccessoryChange}
+                  required
+                />
+              </div>
+
+              {isPrinterAccessory && (
+                <div className="form-group">
+                  <label>דגם:</label>
+                  <input
+                    type="text"
+                    name="model"
+                    placeholder="הזן דגם"
+                    value={accessoryForm.model}
+                    onChange={handleAccessoryChange}
+                    required
+                  />
+                </div>
+              )}
+
+              {showAccessorySerialFields && (
+                <>
+                  <div className="form-group">
+                    <label>סיריאל:</label>
+                    <input
+                      type="text"
+                      name="serialNumber"
+                      placeholder="הזן סיריאל"
+                      value={accessoryForm.serialNumber}
+                      onChange={handleAccessoryChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>סיריאל אינוונטר:</label>
+                    <input
+                      type="text"
+                      name="inventorySerial"
+                      placeholder="הזן סיריאל אינוונטר"
+                      value={accessoryForm.inventorySerial}
+                      onChange={handleAccessoryChange}
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              <button type="submit" className="btn btn-primary accessory-submit">
+                הוסף ציוד נלווה
+              </button>
+            </form>
+          )}
+
+          {selectedOfficeAccessories.length === 0 ? (
+            <p>אין ציוד נלווה במשרד הזה.</p>
+          ) : (
+            <div className="accessory-list">
+              {selectedOfficeAccessories.map((item) => (
+                <div className="accessory-item" key={item.id}>
+                  <div className="accessory-detail accessory-type">
+                    <span>סוג</span>
+                    <strong>{accessoryTypeLabels[item.type] || item.type}</strong>
+                  </div>
+
+                  <div className="accessory-detail">
+                    <span>יצרן</span>
+                    <strong>{item.manufacturer || '-'}</strong>
+                  </div>
+
+                  {item.type === 'printer' && (
+                    <div className="accessory-detail">
+                      <span>דגם</span>
+                      <strong>{item.model || '-'}</strong>
+                    </div>
+                  )}
+
+                  {item.type === 'monitor' && (
+                    <div className="accessory-detail">
+                      <span>גודל</span>
+                      <strong>{item.size ? `${item.size} אינץ׳` : '-'}</strong>
+                    </div>
+                  )}
+
+                  {(item.type === 'monitor' || item.type === 'dockingStation') && (
+                    <>
+                      <div className="accessory-detail">
+                        <span>סיריאל</span>
+                        <strong>{item.serial_number || '-'}</strong>
+                      </div>
+
+                      <div className="accessory-detail">
+                        <span>סיריאל אינוונטר</span>
+                        <strong>{item.inventory_serial || '-'}</strong>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="accessory-detail accessory-date">
+                    <span>תאריך</span>
+                    <strong>{new Date(item.created_at).toLocaleDateString('he-IL')}</strong>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>
