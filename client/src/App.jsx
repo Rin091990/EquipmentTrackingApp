@@ -50,6 +50,14 @@ function App() {
   const isPhone = form.category === 'phone';
   const showEquipmentForm = isAdmin && selectedSection === 'newEquipment';
   const showDataTable = selectedSection === 'general';
+  const buildings = useMemo(() => {
+    const names = data
+      .map((row) => row.building?.trim())
+      .filter(Boolean);
+
+    return [...new Set(names)].sort((a, b) => a.localeCompare(b, 'he'));
+  }, [data]);
+
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -117,7 +125,12 @@ function App() {
   }, [api, handleLogout]);
 
   useEffect(() => {
-    if (auth?.token && (selectedSection === 'general' || selectedSection === 'newEquipment')) {
+    if (
+      auth?.token &&
+      (selectedSection === 'general' ||
+        selectedSection === 'newEquipment' ||
+        selectedSection === 'buildings')
+    ) {
       fetchData();
     }
   }, [auth?.token, fetchData, selectedSection]);
@@ -295,6 +308,23 @@ function App() {
         </header>
 
         <section className="placeholder-section">
+          <h2>מבנים</h2>
+          {loading ? (
+            <p>טוען מבנים...</p>
+          ) : buildings.length === 0 ? (
+            <p>אין מבנים עדיין.</p>
+          ) : (
+            <div className="buildings-grid">
+              {buildings.map((building) => (
+                <button type="button" className="building-button" key={building}>
+                  {building}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="placeholder-section legacy-placeholder">
           <h2>מבנים</h2>
           <p>כאן נוסיף את ניהול המבנים בהמשך.</p>
         </section>

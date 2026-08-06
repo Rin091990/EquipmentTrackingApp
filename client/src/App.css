@@ -131,6 +131,36 @@ body {
   color: #666;
 }
 
+.legacy-placeholder {
+  display: none;
+}
+
+.buildings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.building-button {
+  background: #667eea;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  min-height: 72px;
+  padding: 16px;
+  transition: all 0.3s;
+}
+
+.building-button:hover {
+  background: #5568d3;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+}
+
 .main-content {
   display: grid;
   grid-template-columns: 1fr 1fr;
