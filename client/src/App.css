@@ -350,6 +350,32 @@ body {
   color: #999;
 }
 
+.name-cell {
+  min-width: 120px;
+}
+
+.email-cell {
+  direction: ltr;
+  min-width: 155px;
+  text-align: center;
+}
+
+.email-cell-content {
+  direction: ltr;
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.email-cell .table-edit-input {
+  direction: ltr;
+  text-align: left;
+}
+
 .table-edit-input {
   width: 130px;
   max-width: 100%;
@@ -406,6 +432,25 @@ body {
   background: #667eea;
   border-color: #667eea;
   color: white;
+}
+
+.history-link-button {
+  background: transparent;
+  border: none;
+  color: #334bd8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-link-button:hover {
+  color: #1d2fa8;
 }
 
 .accessory-section {
@@ -472,6 +517,85 @@ body {
 
 .table-wrapper {
   overflow-x: visible;
+}
+
+.history-table-wrapper {
+  overflow-x: auto;
+}
+
+.history-table-wrapper table {
+  min-width: 1500px;
+}
+
+.history-table th,
+.history-table td {
+  padding: 9px 5px;
+}
+
+.history-date-col {
+  width: 150px;
+}
+
+.history-changes-col {
+  width: 150px;
+}
+
+.history-name-col {
+  width: 180px;
+}
+
+.history-email-col {
+  width: 230px;
+}
+
+.history-building-col {
+  width: 105px;
+}
+
+.history-office-col {
+  width: 70px;
+}
+
+.history-category-col {
+  width: 85px;
+}
+
+.history-manufacturer-col {
+  width: 95px;
+}
+
+.history-model-col {
+  width: 90px;
+}
+
+.history-color-col {
+  width: 65px;
+}
+
+.history-storage-col {
+  width: 70px;
+}
+
+.history-serial-col {
+  width: 110px;
+}
+
+.history-inventory-col {
+  width: 145px;
+}
+
+.history-user-col {
+  width: 105px;
+}
+
+.history-name-cell {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.history-email-cell {
+  direction: ltr;
+  text-align: center;
 }
 
 .table-header {
