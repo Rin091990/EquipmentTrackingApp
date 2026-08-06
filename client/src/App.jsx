@@ -23,6 +23,7 @@ const emptyForm = {
   color: '',
   storage: '512GB',
   serialNumber: '',
+  inventorySerial: '',
 };
 
 function App() {
@@ -91,6 +92,7 @@ function App() {
             row.manufacturer,
             row.model,
             row.serial_number,
+            row.inventory_serial,
           ]
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(normalizedSearch))
@@ -166,6 +168,7 @@ function App() {
         category: value,
         storage: value === 'computer' ? '512GB' : '256GB',
         color: value === 'computer' ? '' : form.color,
+        inventorySerial: value === 'computer' ? form.inventorySerial : '',
       });
       return;
     }
@@ -409,6 +412,7 @@ function App() {
                   <tr>
                     <th>שם עובד</th>
                     <th>דוא"ל</th>
+                    <th>מבנה</th>
                     <th>משרד</th>
                     <th>קטגוריה</th>
                     <th>יצרן</th>
@@ -416,6 +420,7 @@ function App() {
                     <th>צבע</th>
                     <th>מקום</th>
                     <th>סיריאל</th>
+                    <th>סיריאל אינוונטר</th>
                     <th>תאריך</th>
                     {isAdmin && <th>פעולות</th>}
                   </tr>
@@ -425,6 +430,7 @@ function App() {
                     <tr key={row.id}>
                       <td>{row.name}</td>
                       <td>{row.email}</td>
+                      <td>{row.building || selectedBuilding || '-'}</td>
                       <td>{row.office || '-'}</td>
                       <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
                       <td>{row.manufacturer || '-'}</td>
@@ -432,6 +438,7 @@ function App() {
                       <td>{row.color || '-'}</td>
                       <td>{row.storage || '-'}</td>
                       <td>{row.serial_number || '-'}</td>
+                      <td>{row.inventory_serial || '-'}</td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                       {isAdmin && (
                         <td>
@@ -606,6 +613,20 @@ function App() {
                     required
                   />
                 </div>
+
+                {isComputer && (
+                  <div className="form-group">
+                    <label>סיריאל אינוונטר:</label>
+                    <input
+                      type="text"
+                      name="inventorySerial"
+                      placeholder="הזן סיריאל אינוונטר"
+                      value={form.inventorySerial}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                )}
               </div>
 
               <button type="submit" className="btn btn-primary">
@@ -654,6 +675,7 @@ function App() {
                         <th>צבע</th>
                         <th>מקום</th>
                         <th>סיריאל</th>
+                        <th>סיריאל אינוונטר</th>
                         <th>תאריך</th>
                         {isAdmin && <th>פעולות</th>}
                       </tr>
@@ -671,6 +693,7 @@ function App() {
                           <td>{row.color || '-'}</td>
                           <td>{row.storage || '-'}</td>
                           <td>{row.serial_number || '-'}</td>
+                          <td>{row.inventory_serial || '-'}</td>
                           <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                           {isAdmin && (
                             <td>
