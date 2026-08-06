@@ -31,6 +31,7 @@ function App() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
 
   const api = useMemo(() => {
     const instance = axios.create({ baseURL: API_URL });
@@ -83,6 +84,7 @@ function App() {
     localStorage.removeItem('equipmentAuth');
     setAuth(null);
     setData([]);
+    setSelectedSection('');
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -102,10 +104,10 @@ function App() {
   }, [api, handleLogout]);
 
   useEffect(() => {
-    if (auth?.token) {
+    if (auth?.token && selectedSection === 'general') {
       fetchData();
     }
-  }, [auth?.token, fetchData]);
+  }, [auth?.token, fetchData, selectedSection]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -211,6 +213,75 @@ function App() {
     );
   }
 
+  if (!selectedSection) {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <div>
+            <h1>׳׳¢׳¨׳›׳× ׳ ׳™׳”׳•׳ ׳¦׳™׳•׳“</h1>
+            <p>׳‘׳—׳¨ ׳׳–׳•׳¨ ׳¢׳‘׳•׳“׳”</p>
+          </div>
+
+          <div className="user-panel">
+            <span>{auth.user.username}</span>
+            <strong>{isAdmin ? 'admin' : 'viewer'}</strong>
+            <button type="button" onClick={handleLogout} className="btn btn-secondary">
+              ׳™׳¦׳™׳׳”
+            </button>
+          </div>
+        </header>
+
+        <section className="section-menu">
+          <button
+            type="button"
+            className="section-button"
+            onClick={() => setSelectedSection('general')}
+          >
+            כללי
+          </button>
+          <button
+            type="button"
+            className="section-button"
+            onClick={() => setSelectedSection('buildings')}
+          >
+            מבנים
+          </button>
+        </section>
+      </div>
+    );
+  }
+
+  if (selectedSection === 'buildings') {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <div>
+            <h1>מבנים</h1>
+            <p>ניהול מבנים</p>
+          </div>
+
+          <div className="user-panel">
+            <button
+              type="button"
+              onClick={() => setSelectedSection('')}
+              className="btn btn-secondary"
+            >
+              חזרה
+            </button>
+            <button type="button" onClick={handleLogout} className="btn btn-secondary">
+              יציאה
+            </button>
+          </div>
+        </header>
+
+        <section className="placeholder-section">
+          <h2>מבנים</h2>
+          <p>כאן נוסיף את ניהול המבנים בהמשך.</p>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       <header className="header">
@@ -220,6 +291,13 @@ function App() {
         </div>
 
         <div className="user-panel">
+          <button
+            type="button"
+            onClick={() => setSelectedSection('')}
+            className="btn btn-secondary"
+          >
+            חזרה
+          </button>
           <span>{auth.user.username}</span>
           <strong>{isAdmin ? 'admin' : 'viewer'}</strong>
           <button type="button" onClick={handleLogout} className="btn btn-secondary">
