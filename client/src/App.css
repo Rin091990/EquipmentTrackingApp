@@ -601,6 +601,22 @@ body {
   gap: 16px;
 }
 
+.bulk-actions-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8f9ff;
+  border: 1px solid #dfe4ff;
+  border-radius: 6px;
+  margin-top: 16px;
+  padding: 10px 12px;
+}
+
+.bulk-actions-menu span {
+  color: #333;
+  font-weight: 700;
+}
+
 .search-input {
   width: 280px;
   max-width: 100%;

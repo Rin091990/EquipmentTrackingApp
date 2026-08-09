@@ -408,6 +408,56 @@ app.get('/api/export', requireAuth, async (req, res) => {
   }
 });
 
+// API ליצוא רשומות מסומנות
+app.post('/api/export-selected', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { ids, exportType } = req.body;
+
+    if (!Array.isArray(ids) || ids.length < 2) {
+      return res.status(400).json({ error: 'צריך לבחור לפחות שתי רשומות' });
+    }
+
+    const exportColumn = exportType === 'travel' ? 'הוחזר' : 'קיים';
+    const fileName = exportType === 'travel' ? 'travel-form.xlsx' : 'audit-form.xlsx';
+    const numericIds = ids.map(Number).filter((id) => Number.isInteger(id));
+
+    if (numericIds.length < 2) {
+      return res.status(400).json({ error: 'בחירת הרשומות לא תקינה' });
+    }
+
+    const result = await client.query(
+      'SELECT * FROM forms WHERE id = ANY($1::int[]) ORDER BY created_at DESC',
+      [numericIds]
+    );
+
+    const records = result.rows.map((row) => ({
+      'שם עובד': row.name || '',
+      'דוא"ל': row.email || '',
+      'מבנה': row.building || '',
+      'משרד': row.office || '',
+      'קטגוריה': row.category === 'computer' ? 'מחשב' : 'פלאפון',
+      'יצרן': row.manufacturer || '',
+      'דגם': row.model || '',
+      'צבע': row.color || '',
+      'מקום': row.storage || '',
+      'סיריאל': row.serial_number || '',
+      'סיריאל אינוונטר': row.inventory_serial || '',
+      [exportColumn]: '',
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(records);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'ציוד');
+
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API לקבלת כל הנתונים
 app.get('/api/data', requireAuth, async (req, res) => {
   try {
