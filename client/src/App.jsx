@@ -18,6 +18,7 @@ const emptyForm = {
   building: '',
   office: '',
   category: 'computer',
+  status: 'active',
   manufacturer: '',
   model: '',
   color: 'שחור',
@@ -41,6 +42,11 @@ const accessoryTypeLabels = {
   dockingStation: 'תחנת עגינה',
 };
 
+const equipmentStatusLabels = {
+  active: 'פעיל',
+  scrapped: 'נגרט',
+};
+
 function App() {
   const [auth, setAuth] = useState(getSavedAuth);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
@@ -55,6 +61,7 @@ function App() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
   const [sortMode, setSortMode] = useState('date');
   const [selectedSection, setSelectedSection] = useState('');
@@ -66,6 +73,7 @@ function App() {
     email: '',
     building: '',
     office: '',
+    status: 'active',
     inventorySerial: '',
   });
   const [selectedActionId, setSelectedActionId] = useState(null);
@@ -89,6 +97,15 @@ function App() {
   const isAdmin = auth?.user?.role === 'admin';
   const isComputer = form.category === 'computer';
   const isPhone = form.category === 'phone';
+  const renderStatusBadge = (status) => {
+    const normalizedStatus = status === 'scrapped' ? 'scrapped' : 'active';
+
+    return (
+      <span className={`status-badge status-badge-${normalizedStatus}`}>
+        {equipmentStatusLabels[normalizedStatus]}
+      </span>
+    );
+  };
   const showEquipmentForm = isAdmin && selectedSection === 'newEquipment';
   const showDataTable = selectedSection === 'general';
   const sortRows = useCallback(
@@ -187,9 +204,11 @@ function App() {
   const filteredData = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    const rows = normalizedSearch
-      ? data.filter((row) =>
-          [
+    const rows = data.filter((row) => {
+      const normalizedStatus = row.status === 'scrapped' ? 'scrapped' : 'active';
+      const matchesStatus = normalizedStatus === statusFilter;
+      const matchesGeneralSearch = normalizedSearch
+        ? [
             row.name,
             row.email,
             row.building,
@@ -202,11 +221,13 @@ function App() {
           ]
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(normalizedSearch))
-        )
-      : data;
+        : true;
+
+      return matchesStatus && matchesGeneralSearch;
+    });
 
     return sortRows(rows);
-  }, [data, searchTerm, sortRows]);
+  }, [data, searchTerm, sortRows, statusFilter]);
 
   const handleLoginChange = (e) => {
     setLoginForm({ ...loginForm, [e.target.name]: e.target.value });
@@ -361,6 +382,7 @@ function App() {
       email: row.email || '',
       building: row.building || '',
       office: row.office || '',
+      status: row.status === 'scrapped' ? 'scrapped' : 'active',
       inventorySerial: row.inventory_serial || '',
     });
   };
@@ -380,6 +402,7 @@ function App() {
       email: '',
       building: '',
       office: '',
+      status: 'active',
       inventorySerial: '',
     });
   };
@@ -512,6 +535,24 @@ function App() {
     );
   };
 
+  const renderStatusCell = (row) => {
+    if (editingId !== row.id) {
+      return renderStatusBadge(row.status);
+    }
+
+    return (
+      <select
+        name="status"
+        value={editForm.status}
+        onChange={handleEditChange}
+        className="table-edit-input table-edit-input-status"
+      >
+        <option value="active">פעיל</option>
+        <option value="scrapped">נגרט</option>
+      </select>
+    );
+  };
+
   const getHistoryDisplayRows = () => {
     const updatedRows = historyRows.map((row) => ({
       ...row,
@@ -532,6 +573,7 @@ function App() {
         building: oldestChange.previous_building || historyItem?.building,
         office: oldestChange.previous_office || historyItem?.office,
         category: oldestChange.previous_category || historyItem?.category,
+        status: oldestChange.previous_status || historyItem?.status,
         manufacturer: oldestChange.previous_manufacturer || historyItem?.manufacturer,
         model: oldestChange.previous_model || historyItem?.model,
         color: oldestChange.previous_color || historyItem?.color,
@@ -830,6 +872,7 @@ function App() {
                     <th>מקום</th>
                     <th>סיריאל</th>
                     <th>אינוונטר</th>
+                    <th>סטטוס</th>
                     <th>תאריך</th>
                     {isAdmin && <th className="actions-column">פעולות</th>}
                   </tr>
@@ -863,6 +906,7 @@ function App() {
                       <td>{row.storage || '-'}</td>
                       <td>{renderSerialCell(row)}</td>
                       <td>{renderInventorySerialCell(row)}</td>
+                      <td>{renderStatusCell(row)}</td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                       {isAdmin && (
                         <td className="table-actions">
@@ -966,6 +1010,7 @@ function App() {
                     <th>מקום</th>
                     <th>סיריאל</th>
                     <th>אינוונטר</th>
+                    <th>סטטוס</th>
                     <th>תאריך</th>
                     {isAdmin && <th className="actions-column">פעולות</th>}
                   </tr>
@@ -999,6 +1044,7 @@ function App() {
                       <td>{row.storage || '-'}</td>
                       <td>{renderSerialCell(row)}</td>
                       <td>{renderInventorySerialCell(row)}</td>
+                      <td>{renderStatusCell(row)}</td>
                       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                       {isAdmin && (
                         <td className="table-actions">
@@ -1245,6 +1291,7 @@ function App() {
                   <col className="history-building-col" />
                   <col className="history-office-col" />
                   <col className="history-category-col" />
+                  <col className="history-status-col" />
                   <col className="history-manufacturer-col" />
                   <col className="history-model-col" />
                   <col className="history-color-col" />
@@ -1261,6 +1308,7 @@ function App() {
                     <th>מבנה</th>
                     <th>משרד</th>
                     <th>קטגוריה</th>
+                    <th>סטטוס</th>
                     <th>יצרן</th>
                     <th>דגם</th>
                     <th>צבע</th>
@@ -1289,6 +1337,7 @@ function App() {
                             ? 'פלאפון'
                             : '-'}
                       </td>
+                      <td>{renderStatusBadge(row.status || historyItem?.status)}</td>
                       <td>{row.manufacturer || historyItem?.manufacturer || '-'}</td>
                       <td>{row.model || historyItem?.model || '-'}</td>
                       <td>{row.color || historyItem?.color || '-'}</td>
@@ -1393,6 +1442,14 @@ function App() {
               </div>
 
               <div className="form-group">
+                <label>סטטוס:</label>
+                <select name="status" value={form.status} onChange={handleChange}>
+                  <option value="active">פעיל</option>
+                  <option value="scrapped">נגרט</option>
+                </select>
+              </div>
+
+              <div className="form-group">
                 <label>מקום:</label>
                 <select name="storage" value={form.storage} onChange={handleChange}>
                   {isComputer ? (
@@ -1486,11 +1543,22 @@ function App() {
           <>
             <section className="table-section">
               <div className="table-header">
-                <h2>הנתונים השמורים ({filteredData.length})</h2>
+                <div className="table-title-actions">
+                  <h2>הנתונים השמורים ({filteredData.length})</h2>
+                  <button
+                    type="button"
+                    className="btn btn-status-filter"
+                    onClick={() =>
+                      setStatusFilter((current) => (current === 'active' ? 'scrapped' : 'active'))
+                    }
+                  >
+                    {statusFilter === 'active' ? 'ציוד גרוט' : 'ציוד פעיל'}
+                  </button>
+                </div>
                 <input
                   type="search"
                   className="search-input"
-                  placeholder="חיפוש לפי שם או מילת מפתח"
+                  placeholder="חיפוש לפי שם, מייל, סיריאל או אינוונטר"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -1518,6 +1586,7 @@ function App() {
                         <th>מקום</th>
                         <th>סיריאל</th>
                         <th>אינוונטר</th>
+                        <th>סטטוס</th>
                         <th>תאריך</th>
                         {isAdmin && <th className="actions-column">פעולות</th>}
                       </tr>
@@ -1551,6 +1620,7 @@ function App() {
                           <td>{row.storage || '-'}</td>
                           <td>{renderSerialCell(row)}</td>
                           <td>{renderInventorySerialCell(row)}</td>
+                          <td>{renderStatusCell(row)}</td>
                           <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
                           {isAdmin && (
                             <td className="table-actions">
