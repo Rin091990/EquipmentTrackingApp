@@ -68,6 +68,7 @@ function App() {
     inventorySerial: '',
   });
   const [selectedActionId, setSelectedActionId] = useState(null);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [activeEditField, setActiveEditField] = useState(null);
   const isMonitorAccessory = accessoryForm.type === 'monitor';
   const isPrinterAccessory = accessoryForm.type === 'printer';
@@ -333,6 +334,7 @@ function App() {
   const cancelEdit = () => {
     setEditingId(null);
     setSelectedActionId(null);
+    setSelectedRowIds([]);
     setActiveEditField(null);
     setEditForm({
       name: '',
@@ -520,18 +522,20 @@ function App() {
   const toggleRowActions = (rowId) => {
     if (!isAdmin) return;
 
-    if (selectedActionId === rowId) {
-      setSelectedActionId(null);
+    setSelectedRowIds((currentIds) => {
+      const nextIds = currentIds.includes(rowId)
+        ? currentIds.filter((id) => id !== rowId)
+        : [...currentIds, rowId];
+
+      setSelectedActionId(nextIds.length === 1 ? nextIds[0] : null);
+      return nextIds;
+    });
+
+    if (selectedActionId === rowId && selectedRowIds.length === 1) {
       if (editingId === rowId) {
         cancelEdit();
       }
       return;
-    }
-
-    setSelectedActionId(rowId);
-    if (editingId && editingId !== rowId) {
-      cancelEdit();
-      setSelectedActionId(rowId);
     }
   };
 
@@ -550,6 +554,42 @@ function App() {
       alert('שגיאה בייצוא: ' + err.message);
     }
   };
+
+  const handleSelectedExport = async (exportType) => {
+    if (selectedRowIds.length < 2) return;
+
+    try {
+      const response = await api.post(
+        '/export-selected',
+        { ids: selectedRowIds, exportType },
+        { responseType: 'blob' }
+      );
+      const url = window.URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${exportType}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('שגיאה בייצוא: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const renderBulkActions = () =>
+    selectedRowIds.length > 1 ? (
+      <div className="bulk-actions-menu">
+        <span>{selectedRowIds.length} רשומות נבחרו</span>
+        <button type="button" className="btn btn-secondary" onClick={() => handleSelectedExport('audit')}>
+          ביקורת
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => handleSelectedExport('travel')}>
+          טופס טיולים
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => setSelectedRowIds([])}>
+          ניקוי
+        </button>
+      </div>
+    ) : null;
 
   const handleDelete = async (id) => {
     if (!isAdmin) return;
@@ -744,6 +784,7 @@ function App() {
               onChange={(e) => setBuildingSearchTerm(e.target.value)}
             />
           </div>
+          {renderBulkActions()}
 
           {loading ? (
             <p>טוען נתונים...</p>
@@ -777,7 +818,7 @@ function App() {
                         <td className="select-column">
                           <input
                             type="checkbox"
-                            checked={selectedActionId === row.id}
+                            checked={selectedRowIds.includes(row.id)}
                             onChange={() => toggleRowActions(row.id)}
                             className="row-action-checkbox"
                             aria-label="בחר פעולות לרשומה"
@@ -879,6 +920,7 @@ function App() {
           <div className="table-header">
             <h2>הציוד במשרד {selectedOffice} ({selectedOfficeRows.length})</h2>
           </div>
+          {renderBulkActions()}
 
           {loading ? (
             <p>טוען נתונים...</p>
@@ -912,7 +954,7 @@ function App() {
                         <td className="select-column">
                           <input
                             type="checkbox"
-                            checked={selectedActionId === row.id}
+                            checked={selectedRowIds.includes(row.id)}
                             onChange={() => toggleRowActions(row.id)}
                             className="row-action-checkbox"
                             aria-label="בחר פעולות לרשומה"
@@ -1436,6 +1478,7 @@ function App() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              {renderBulkActions()}
 
               {loading ? (
                 <p>טוען נתונים...</p>
@@ -1469,7 +1512,7 @@ function App() {
                             <td className="select-column">
                               <input
                                 type="checkbox"
-                                checked={selectedActionId === row.id}
+                                checked={selectedRowIds.includes(row.id)}
                                 onChange={() => toggleRowActions(row.id)}
                                 className="row-action-checkbox"
                                 aria-label="בחר פעולות לרשומה"
