@@ -172,6 +172,17 @@ const createTable = async () => {
         model VARCHAR(255),
         color VARCHAR(100),
         storage VARCHAR(50),
+        previous_serial_number VARCHAR(255),
+        previous_inventory_serial VARCHAR(255),
+        previous_name VARCHAR(255),
+        previous_email VARCHAR(255),
+        previous_building VARCHAR(255),
+        previous_office VARCHAR(255),
+        previous_category VARCHAR(100),
+        previous_manufacturer VARCHAR(255),
+        previous_model VARCHAR(255),
+        previous_color VARCHAR(100),
+        previous_storage VARCHAR(50),
         changed_by VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -188,7 +199,18 @@ const createTable = async () => {
       ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255),
       ADD COLUMN IF NOT EXISTS model VARCHAR(255),
       ADD COLUMN IF NOT EXISTS color VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS storage VARCHAR(50)
+      ADD COLUMN IF NOT EXISTS storage VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS previous_serial_number VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS previous_inventory_serial VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS previous_name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS previous_email VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS previous_building VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS previous_office VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS previous_category VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS previous_manufacturer VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS previous_model VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS previous_color VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS previous_storage VARCHAR(50)
     `);
     console.log('✅ טבלה "forms" מוכנה!');
   } catch (err) {
@@ -488,9 +510,24 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
             model,
             color,
             storage,
+            previous_serial_number,
+            previous_inventory_serial,
+            previous_name,
+            previous_email,
+            previous_building,
+            previous_office,
+            previous_category,
+            previous_manufacturer,
+            previous_model,
+            previous_color,
+            previous_storage,
             changed_by
           )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+         VALUES (
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+           $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+           $21, $22, $23, $24, $25, $26, $27, $28
+         )`,
         [
           id,
           updatedRow.serial_number,
@@ -512,6 +549,17 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
           updatedRow.model,
           updatedRow.color,
           updatedRow.storage,
+          currentRow.serial_number,
+          currentRow.inventory_serial,
+          currentRow.name,
+          currentRow.email,
+          currentRow.building,
+          currentRow.office,
+          currentRow.category,
+          currentRow.manufacturer,
+          currentRow.model,
+          currentRow.color,
+          currentRow.storage,
           req.user?.username || 'admin',
         ]
       );
