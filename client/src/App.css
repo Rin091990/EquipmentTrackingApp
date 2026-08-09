@@ -524,7 +524,7 @@ body {
 }
 
 .history-table-wrapper table {
-  min-width: 1500px;
+  min-width: 1425px;
 }
 
 .history-table th,
@@ -533,10 +533,6 @@ body {
 }
 
 .history-date-col {
-  width: 150px;
-}
-
-.history-changes-col {
   width: 150px;
 }
 

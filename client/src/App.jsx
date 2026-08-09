@@ -347,6 +347,19 @@ function App() {
     if (!isAdmin) return;
 
     try {
+      const currentRow = data.find((row) => row.id === id);
+      const previousBuilding = String(currentRow?.building || '').trim();
+      const nextBuilding = String(editForm.building || '').trim();
+      const previousBuildingCount = data.filter(
+        (row) => String(row.building || '').trim() === previousBuilding
+      ).length;
+      const shouldReturnToBuildings =
+        (selectedSection === 'buildingDetails' || selectedSection === 'officeDetails') &&
+        previousBuilding &&
+        selectedBuilding === previousBuilding &&
+        previousBuilding !== nextBuilding &&
+        previousBuildingCount === 1;
+
       const response = await api.put(`/update/${id}`, editForm);
       if (response.data?.row) {
         setData((currentData) =>
@@ -355,6 +368,11 @@ function App() {
       }
       await fetchData();
       cancelEdit();
+      if (shouldReturnToBuildings) {
+        setSelectedBuilding('');
+        setSelectedOffice('');
+        setSelectedSection('buildings');
+      }
       alert('השינויים נשמרו בהצלחה!');
     } catch (err) {
       alert('שגיאה: ' + (err.response?.data?.error || err.message));
@@ -451,6 +469,38 @@ function App() {
         {row.inventory_serial}
       </button>
     );
+  };
+
+  const getHistoryDisplayRows = () => {
+    const updatedRows = historyRows.map((row) => ({
+      ...row,
+      displayId: `${row.id}-updated`,
+      rowType: 'updated',
+    }));
+
+    const oldestChange = historyRows[historyRows.length - 1];
+    if (!oldestChange) return updatedRows;
+
+    return [
+      ...updatedRows,
+      {
+        ...oldestChange,
+        displayId: `${oldestChange.id}-original`,
+        name: oldestChange.previous_name || historyItem?.name,
+        email: oldestChange.previous_email || historyItem?.email,
+        building: oldestChange.previous_building || historyItem?.building,
+        office: oldestChange.previous_office || historyItem?.office,
+        category: oldestChange.previous_category || historyItem?.category,
+        manufacturer: oldestChange.previous_manufacturer || historyItem?.manufacturer,
+        model: oldestChange.previous_model || historyItem?.model,
+        color: oldestChange.previous_color || historyItem?.color,
+        storage: oldestChange.previous_storage || historyItem?.storage,
+        serial_number: oldestChange.previous_serial_number || oldestChange.serial_number,
+        inventory_serial:
+          oldestChange.previous_inventory_serial || oldestChange.inventory_serial,
+        rowType: 'original',
+      },
+    ];
   };
 
   const renderOfficeCell = (row) => {
@@ -1125,7 +1175,6 @@ function App() {
               <table className="history-table">
                 <colgroup>
                   <col className="history-date-col" />
-                  <col className="history-changes-col" />
                   <col className="history-name-col" />
                   <col className="history-email-col" />
                   <col className="history-building-col" />
@@ -1142,7 +1191,6 @@ function App() {
                 <thead>
                   <tr>
                     <th>תאריך</th>
-                    <th>שינויים</th>
                     <th>שם עובד</th>
                     <th>דוא"ל</th>
                     <th>מבנה</th>
@@ -1154,14 +1202,13 @@ function App() {
                     <th>מקום</th>
                     <th>סיריאל</th>
                     <th>סיריאל אינוונטר</th>
-                    <th>בוצע על ידי</th>
+                    <th>בוצע ע"י</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {historyRows.map((row) => (
-                    <tr key={row.id}>
+                  {getHistoryDisplayRows().map((row) => (
+                    <tr key={row.displayId}>
                       <td>{new Date(row.created_at).toLocaleString('he-IL')}</td>
-                      <td>{row.change_summary || row.field_name || '-'}</td>
                       <td className="history-name-cell">{row.name || historyItem?.name || '-'}</td>
                       <td className="history-email-cell" title={row.email || historyItem?.email || ''}>
                         <span className="email-cell-content">
