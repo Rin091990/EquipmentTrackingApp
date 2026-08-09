@@ -56,6 +56,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
+  const [sortMode, setSortMode] = useState('date');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedBuilding, setSelectedBuilding] = useState('');
   const [selectedOffice, setSelectedOffice] = useState('');
@@ -90,6 +91,46 @@ function App() {
   const isPhone = form.category === 'phone';
   const showEquipmentForm = isAdmin && selectedSection === 'newEquipment';
   const showDataTable = selectedSection === 'general';
+  const sortRows = useCallback(
+    (rows) => {
+      const sortedRows = [...rows];
+
+      if (sortMode === 'name') {
+        return sortedRows.sort((a, b) =>
+          String(a.name || '').localeCompare(String(b.name || ''), 'he')
+        );
+      }
+
+      if (sortMode === 'building') {
+        return sortedRows.sort((a, b) => {
+          const buildingCompare = String(a.building || '').localeCompare(
+            String(b.building || ''),
+            'he'
+          );
+
+          if (buildingCompare !== 0) return buildingCompare;
+
+          return String(a.name || '').localeCompare(String(b.name || ''), 'he');
+        });
+      }
+
+      return sortedRows.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    },
+    [sortMode]
+  );
+
+  const renderSortableHeader = (label, mode) => (
+    <button
+      type="button"
+      className={`sortable-header ${sortMode === mode ? 'active' : ''}`}
+      onClick={() => setSortMode((currentMode) => (currentMode === mode ? 'date' : mode))}
+    >
+      {label}
+    </button>
+  );
+
   const buildings = useMemo(() => {
     const names = data
       .map((row) => row.building?.trim())
@@ -111,14 +152,14 @@ function App() {
         )
       : rows;
 
-    return filteredRows
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [buildingSearchTerm, data, selectedBuilding]);
+    return sortRows(filteredRows);
+  }, [buildingSearchTerm, data, selectedBuilding, sortRows]);
 
   const selectedOfficeRows = useMemo(() => {
     if (!selectedOffice) return [];
 
-    return data
+    return sortRows(
+      data
       .filter((row) => {
         const sameOffice = String(row.office || '').trim() === selectedOffice;
         const sameBuilding = selectedBuilding
@@ -127,8 +168,8 @@ function App() {
 
         return sameOffice && sameBuilding;
       })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [data, selectedBuilding, selectedOffice]);
+    );
+  }, [data, selectedBuilding, selectedOffice, sortRows]);
 
   const selectedOfficeAccessories = useMemo(() => {
     if (!selectedOffice) return [];
@@ -164,10 +205,8 @@ function App() {
         )
       : data;
 
-    return [...rows].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [data, searchTerm]);
+    return sortRows(rows);
+  }, [data, searchTerm, sortRows]);
 
   const handleLoginChange = (e) => {
     setLoginForm({ ...loginForm, [e.target.name]: e.target.value });
@@ -796,9 +835,9 @@ function App() {
                 <thead>
                   <tr>
                     {isAdmin && <th className="select-column"></th>}
-                    <th>שם עובד</th>
+                    <th>{renderSortableHeader('שם עובד', 'name')}</th>
                     <th>דוא"ל</th>
-                    <th>מבנה</th>
+                    <th>{renderSortableHeader('מבנה', 'building')}</th>
                     <th>משרד</th>
                     <th>קטגוריה</th>
                     <th>יצרן</th>
@@ -806,7 +845,7 @@ function App() {
                     <th>צבע</th>
                     <th>מקום</th>
                     <th>סיריאל</th>
-                    <th>סיריאל אינוונטר</th>
+                    <th>אינוונטר</th>
                     <th>תאריך</th>
                     {isAdmin && <th className="actions-column">פעולות</th>}
                   </tr>
@@ -932,9 +971,9 @@ function App() {
                 <thead>
                   <tr>
                     {isAdmin && <th className="select-column"></th>}
-                    <th>שם עובד</th>
+                    <th>{renderSortableHeader('שם עובד', 'name')}</th>
                     <th>דוא"ל</th>
-                    <th>מבנה</th>
+                    <th>{renderSortableHeader('מבנה', 'building')}</th>
                     <th>משרד</th>
                     <th>קטגוריה</th>
                     <th>יצרן</th>
@@ -942,7 +981,7 @@ function App() {
                     <th>צבע</th>
                     <th>מקום</th>
                     <th>סיריאל</th>
-                    <th>סיריאל אינוונטר</th>
+                    <th>אינוונטר</th>
                     <th>תאריך</th>
                     {isAdmin && <th className="actions-column">פעולות</th>}
                   </tr>
@@ -1101,11 +1140,11 @@ function App() {
                   </div>
 
                   <div className="form-group">
-                    <label>סיריאל אינוונטר:</label>
+                    <label>אינוונטר:</label>
                     <input
                       type="text"
                       name="inventorySerial"
-                      placeholder="הזן סיריאל אינוונטר"
+                      placeholder="הזן אינוונטר"
                       value={accessoryForm.inventorySerial}
                       onChange={handleAccessoryChange}
                       required
@@ -1158,7 +1197,7 @@ function App() {
                       </div>
 
                       <div className="accessory-detail">
-                        <span>סיריאל אינוונטר</span>
+                        <span>אינוונטר</span>
                         <strong>{item.inventory_serial || '-'}</strong>
                       </div>
                     </>
@@ -1184,7 +1223,7 @@ function App() {
           <div>
             <h1>היסטוריית פריט</h1>
             <p>
-              סיריאל: {historyItem?.serial_number || '-'} | סיריאל אינוונטר:{' '}
+              סיריאל: {historyItem?.serial_number || '-'} | אינוונטר:{' '}
               {historyItem?.inventory_serial || '-'}
             </p>
           </div>
@@ -1243,7 +1282,7 @@ function App() {
                     <th>צבע</th>
                     <th>מקום</th>
                     <th>סיריאל</th>
-                    <th>סיריאל אינוונטר</th>
+                    <th>אינוונטר</th>
                     <th>בוצע ע"י</th>
                   </tr>
                 </thead>
@@ -1439,11 +1478,11 @@ function App() {
 
                 {isComputer && (
                   <div className="form-group">
-                    <label>סיריאל אינוונטר:</label>
+                    <label>אינוונטר:</label>
                     <input
                       type="text"
                       name="inventorySerial"
-                      placeholder="הזן סיריאל אינוונטר"
+                      placeholder="הזן אינוונטר"
                       value={form.inventorySerial}
                       onChange={handleChange}
                       required
@@ -1490,9 +1529,9 @@ function App() {
                     <thead>
                       <tr>
                         {isAdmin && <th className="select-column"></th>}
-                        <th>שם עובד</th>
+                        <th>{renderSortableHeader('שם עובד', 'name')}</th>
                         <th>דוא"ל</th>
-                        <th>מבנה</th>
+                        <th>{renderSortableHeader('מבנה', 'building')}</th>
                         <th>משרד</th>
                         <th>קטגוריה</th>
                         <th>יצרן</th>
@@ -1500,7 +1539,7 @@ function App() {
                         <th>צבע</th>
                         <th>מקום</th>
                         <th>סיריאל</th>
-                        <th>סיריאל אינוונטר</th>
+                        <th>אינוונטר</th>
                         <th>תאריך</th>
                         {isAdmin && <th className="actions-column">פעולות</th>}
                       </tr>
