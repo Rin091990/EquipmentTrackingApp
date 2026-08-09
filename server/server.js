@@ -275,7 +275,7 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
     }
 
     if (category === 'computer' && !inventorySerial) {
-      return res.status(400).json({ error: 'חסר סיריאל אינוונטר למחשב!' });
+      return res.status(400).json({ error: 'חסר אינוונטר למחשב!' });
     }
 
     await client.query(
@@ -441,7 +441,7 @@ app.post('/api/export-selected', requireAuth, requireAdmin, async (req, res) => 
       'צבע': row.color || '',
       'מקום': row.storage || '',
       'סיריאל': row.serial_number || '',
-      'סיריאל אינוונטר': row.inventory_serial || '',
+      'אינוונטר': row.inventory_serial || '',
       [exportColumn]: '',
     }));
 
@@ -506,7 +506,7 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
     const currentRow = current.rows[0];
 
     if (currentRow.category === 'computer' && !inventorySerial) {
-      return res.status(400).json({ error: 'חסר סיריאל אינוונטר למחשב!' });
+      return res.status(400).json({ error: 'חסר אינוונטר למחשב!' });
     }
 
     const historyFields = [
@@ -516,7 +516,7 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
       { key: 'office', label: 'משרד', oldValue: currentRow.office, newValue: office },
       {
         key: 'inventory_serial',
-        label: 'סיריאל אינוונטר',
+        label: 'אינוונטר',
         oldValue: currentRow.inventory_serial,
         newValue: currentRow.category === 'computer' ? inventorySerial : currentRow.inventory_serial,
       },
