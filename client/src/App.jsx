@@ -602,13 +602,13 @@ function App() {
     selectedRowIds.length > 1 ? (
       <div className="bulk-actions-menu">
         <span>{selectedRowIds.length} רשומות נבחרו</span>
-        <button type="button" className="btn btn-secondary" onClick={() => handleSelectedExport('audit')}>
+        <button type="button" className="btn btn-bulk-action" onClick={() => handleSelectedExport('audit')}>
           ביקורת
         </button>
-        <button type="button" className="btn btn-secondary" onClick={() => handleSelectedExport('travel')}>
+        <button type="button" className="btn btn-bulk-action" onClick={() => handleSelectedExport('travel')}>
           טופס טיולים
         </button>
-        <button type="button" className="btn btn-secondary" onClick={() => setSelectedRowIds([])}>
+        <button type="button" className="btn btn-bulk-clear" onClick={() => setSelectedRowIds([])}>
           ניקוי
         </button>
       </div>
@@ -632,8 +632,8 @@ function App() {
     return (
       <div className="login-page">
         <section className="login-card">
-          <h1>מערכת ניהול ציוד</h1>
-          <p>התחבר כדי להמשיך</p>
+          <h1>כניסה למערכת</h1>
+          <p>ניהול ציוד עובדים במקום אחד</p>
 
           <form onSubmit={handleLogin}>
             <div className="form-group">
@@ -676,8 +676,8 @@ function App() {
       <div className="app-container">
         <header className="header">
           <div>
-            <h1>מערכת ניהול ציוד</h1>
-            <p>בחר אזור עבודה</p>
+            <h1>מרכז עבודה</h1>
+            <p>בחר את האזור שבו תרצה לעבוד</p>
           </div>
 
           <div className="user-panel">
@@ -1311,8 +1311,8 @@ function App() {
     <div className="app-container">
       <header className="header">
         <div>
-          <h1>מערכת ניהול ציוד</h1>
-          <p>ניהול ציוד עובדים וייצוא ל-Excel</p>
+          <h1>ניהול ציוד</h1>
+          <p>מעקב, שיוך ועדכון ציוד עובדים</p>
         </div>
 
         <div className="user-panel">

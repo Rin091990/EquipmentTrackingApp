@@ -311,6 +311,31 @@ body {
   background: #dfeaf3;
 }
 
+.btn-bulk-action {
+  background: var(--brand-cyan);
+  color: white;
+  padding: 8px 16px;
+  font-size: 14px;
+  box-shadow: 0 6px 14px rgba(9, 184, 200, 0.2);
+}
+
+.btn-bulk-action:hover {
+  background: var(--brand-cyan-dark);
+  transform: translateY(-1px);
+}
+
+.btn-bulk-clear {
+  background: var(--brand-navy);
+  color: white;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.btn-bulk-clear:hover {
+  background: var(--brand-navy-dark);
+  transform: translateY(-1px);
+}
+
 .btn-delete {
   background: #f44336;
   color: white;
