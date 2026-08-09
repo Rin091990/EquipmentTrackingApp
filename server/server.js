@@ -107,6 +107,7 @@ const createTable = async () => {
         storage VARCHAR(50),
         serial_number VARCHAR(255),
         inventory_serial VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -120,7 +121,14 @@ const createTable = async () => {
       ADD COLUMN IF NOT EXISTS color VARCHAR(100),
       ADD COLUMN IF NOT EXISTS storage VARCHAR(50),
       ADD COLUMN IF NOT EXISTS serial_number VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS inventory_serial VARCHAR(255)
+      ADD COLUMN IF NOT EXISTS inventory_serial VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active'
+    `);
+
+    await client.query(`
+      UPDATE forms
+      SET status = 'active'
+      WHERE status IS NULL OR TRIM(status) = ''
     `);
 
     await client.query(`
@@ -168,6 +176,7 @@ const createTable = async () => {
         building VARCHAR(255),
         office VARCHAR(255),
         category VARCHAR(100),
+        status VARCHAR(50),
         manufacturer VARCHAR(255),
         model VARCHAR(255),
         color VARCHAR(100),
@@ -179,6 +188,7 @@ const createTable = async () => {
         previous_building VARCHAR(255),
         previous_office VARCHAR(255),
         previous_category VARCHAR(100),
+        previous_status VARCHAR(50),
         previous_manufacturer VARCHAR(255),
         previous_model VARCHAR(255),
         previous_color VARCHAR(100),
@@ -196,6 +206,7 @@ const createTable = async () => {
       ADD COLUMN IF NOT EXISTS building VARCHAR(255),
       ADD COLUMN IF NOT EXISTS office VARCHAR(255),
       ADD COLUMN IF NOT EXISTS category VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS status VARCHAR(50),
       ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255),
       ADD COLUMN IF NOT EXISTS model VARCHAR(255),
       ADD COLUMN IF NOT EXISTS color VARCHAR(100),
@@ -207,6 +218,7 @@ const createTable = async () => {
       ADD COLUMN IF NOT EXISTS previous_building VARCHAR(255),
       ADD COLUMN IF NOT EXISTS previous_office VARCHAR(255),
       ADD COLUMN IF NOT EXISTS previous_category VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS previous_status VARCHAR(50),
       ADD COLUMN IF NOT EXISTS previous_manufacturer VARCHAR(255),
       ADD COLUMN IF NOT EXISTS previous_model VARCHAR(255),
       ADD COLUMN IF NOT EXISTS previous_color VARCHAR(100),
@@ -254,6 +266,7 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
       storage,
       serialNumber,
       inventorySerial,
+      status = 'active',
     } = req.body;
     
     if (
@@ -265,7 +278,8 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
       !manufacturer ||
       !model ||
       !storage ||
-      !serialNumber
+      !serialNumber ||
+      !['active', 'scrapped'].includes(status)
     ) {
       return res.status(400).json({ error: 'חסרים נתונים!' });
     }
@@ -280,8 +294,8 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
 
     await client.query(
       `INSERT INTO forms
-        (name, email, building, office, category, manufacturer, model, color, storage, serial_number, inventory_serial)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        (name, email, building, office, category, manufacturer, model, color, storage, serial_number, inventory_serial, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         name,
         email,
@@ -294,6 +308,7 @@ app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
         storage,
         serialNumber,
         category === 'computer' ? inventorySerial : null,
+        status,
       ]
     );
     res.status(201).json({ message: '✅ נשמר בהצלחה!' });
@@ -375,6 +390,7 @@ app.get('/api/export', requireAuth, async (req, res) => {
       storage: row.storage || '',
       serial_number: row.serial_number || '',
       inventory_serial: row.inventory_serial || '',
+      status: row.status === 'scrapped' ? 'נגרט' : 'פעיל',
       created_at: row.created_at,
     }));
 
@@ -442,6 +458,7 @@ app.post('/api/export-selected', requireAuth, requireAdmin, async (req, res) => 
       'מקום': row.storage || '',
       'סיריאל': row.serial_number || '',
       'אינוונטר': row.inventory_serial || '',
+      'סטטוס': row.status === 'scrapped' ? 'נגרט' : 'פעיל',
       [exportColumn]: '',
     }));
 
@@ -491,9 +508,9 @@ app.get('/api/history/:id', requireAuth, async (req, res) => {
 app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, building, office, inventorySerial } = req.body;
+    const { name, email, building, office, inventorySerial, status = 'active' } = req.body;
 
-    if (!name || !email || !building || !office) {
+    if (!name || !email || !building || !office || !['active', 'scrapped'].includes(status)) {
       return res.status(400).json({ error: 'חסרים נתונים לעדכון!' });
     }
 
@@ -515,6 +532,12 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
       { key: 'building', label: 'מבנה', oldValue: currentRow.building, newValue: building },
       { key: 'office', label: 'משרד', oldValue: currentRow.office, newValue: office },
       {
+        key: 'status',
+        label: 'סטטוס',
+        oldValue: currentRow.status === 'scrapped' ? 'נגרט' : 'פעיל',
+        newValue: status === 'scrapped' ? 'נגרט' : 'פעיל',
+      },
+      {
         key: 'inventory_serial',
         label: 'אינוונטר',
         oldValue: currentRow.inventory_serial,
@@ -532,10 +555,11 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
            email = $2,
            building = $3,
            office = $4,
-           inventory_serial = CASE WHEN category = 'computer' THEN $5 ELSE inventory_serial END
-       WHERE id = $6
+           status = $5,
+           inventory_serial = CASE WHEN category = 'computer' THEN $6 ELSE inventory_serial END
+       WHERE id = $7
        RETURNING *`,
-      [name, email, building, office, inventorySerial, id]
+      [name, email, building, office, status, inventorySerial, id]
     );
 
     if (changedFields.length > 0) {
@@ -556,6 +580,7 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
             building,
             office,
             category,
+            status,
             manufacturer,
             model,
             color,
@@ -567,6 +592,7 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
             previous_building,
             previous_office,
             previous_category,
+            previous_status,
             previous_manufacturer,
             previous_model,
             previous_color,
@@ -576,7 +602,7 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
          VALUES (
            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
            $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-           $21, $22, $23, $24, $25, $26, $27, $28
+           $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
          )`,
         [
           id,
@@ -595,6 +621,7 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
           updatedRow.building,
           updatedRow.office,
           updatedRow.category,
+          updatedRow.status,
           updatedRow.manufacturer,
           updatedRow.model,
           updatedRow.color,
@@ -606,6 +633,7 @@ app.put('/api/update/:id', requireAuth, requireAdmin, async (req, res) => {
           currentRow.building,
           currentRow.office,
           currentRow.category,
+          currentRow.status,
           currentRow.manufacturer,
           currentRow.model,
           currentRow.color,
