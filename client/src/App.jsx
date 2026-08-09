@@ -578,22 +578,6 @@ function App() {
     }
   };
 
-  const handleExport = async () => {
-    try {
-      const response = await api.get('/export', {
-        responseType: 'blob',
-      });
-      const url = window.URL.createObjectURL(response.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `equipment-${new Date().toISOString().split('T')[0]}.xlsx`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('שגיאה בייצוא: ' + err.message);
-    }
-  };
-
   const handleSelectedExport = async (exportType) => {
     if (selectedRowIds.length < 2) return;
 
@@ -1500,12 +1484,6 @@ function App() {
 
         {showDataTable && (
           <>
-            <section className="export-section viewer-export">
-              <button onClick={handleExport} className="btn btn-export">
-                ייצא ל-Excel
-              </button>
-            </section>
-
             <section className="table-section">
               <div className="table-header">
                 <h2>הנתונים השמורים ({filteredData.length})</h2>
