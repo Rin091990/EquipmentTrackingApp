@@ -675,6 +675,7 @@ body {
 
 .details-panel-actions {
   justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .accessory-section {

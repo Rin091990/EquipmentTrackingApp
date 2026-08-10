@@ -686,6 +686,24 @@ function App() {
     }
   };
 
+  const handleEmployeeEquipmentExport = async (row) => {
+    if (!row?.id) return;
+
+    try {
+      const response = await api.get(`/export-employee-equipment/${row.id}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `employee-equipment-${row.name || row.id}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('שגיאה בהפקת טופס ציוד לעובד: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const renderBulkActions = () =>
     selectedRowIds.length > 1 ? (
       <div className="bulk-actions-menu">
@@ -763,6 +781,13 @@ function App() {
           )}
           <button type="button" className="btn btn-secondary" onClick={() => openItemHistory(detailsRow)}>
             היסטוריה
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => handleEmployeeEquipmentExport(detailsRow)}
+          >
+            טופס ציוד לעובד
           </button>
         </div>
       </aside>
