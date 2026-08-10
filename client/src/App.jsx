@@ -78,6 +78,7 @@ function App() {
   });
   const [selectedActionId, setSelectedActionId] = useState(null);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const [detailsRow, setDetailsRow] = useState(null);
   const [activeEditField, setActiveEditField] = useState(null);
   const isMonitorAccessory = accessoryForm.type === 'monitor';
   const isPrinterAccessory = accessoryForm.type === 'printer';
@@ -105,6 +106,13 @@ function App() {
         {equipmentStatusLabels[normalizedStatus]}
       </span>
     );
+  };
+  const isInteractiveTarget = (target) =>
+    Boolean(target.closest('button, input, select, a, textarea, label'));
+
+  const openDetailsPanel = (row, event) => {
+    if (event && isInteractiveTarget(event.target)) return;
+    setDetailsRow(row);
   };
   const showEquipmentForm = isAdmin && selectedSection === 'newEquipment';
   const showDataTable = selectedSection === 'general';
@@ -306,6 +314,10 @@ function App() {
     }
   }, [auth?.token, fetchData, fetchOfficeAccessories, selectedSection]);
 
+  useEffect(() => {
+    setDetailsRow(null);
+  }, [selectedSection, selectedBuilding, selectedOffice]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -429,6 +441,7 @@ function App() {
         setData((currentData) =>
           currentData.map((row) => (row.id === id ? response.data.row : row))
         );
+        setDetailsRow((current) => (current?.id === id ? response.data.row : current));
       }
       await fetchData();
       cancelEdit();
@@ -656,6 +669,73 @@ function App() {
       </div>
     ) : null;
 
+  const renderDetailsPanel = () => {
+    if (!detailsRow) return null;
+
+    const detailItems = [
+      ['שם עובד', detailsRow.name],
+      ['דוא"ל', detailsRow.email],
+      ['מבנה', detailsRow.building],
+      ['משרד', detailsRow.office],
+      ['קטגוריה', detailsRow.category === 'computer' ? 'מחשב' : 'פלאפון'],
+      ['יצרן', detailsRow.manufacturer],
+      ['דגם', detailsRow.model],
+      ['צבע', detailsRow.color],
+      ['מקום', detailsRow.storage],
+      ['סיריאל', detailsRow.serial_number],
+      ['אינוונטר', detailsRow.category === 'computer' ? detailsRow.inventory_serial : '-'],
+      ['תאריך', detailsRow.created_at ? new Date(detailsRow.created_at).toLocaleDateString('he-IL') : '-'],
+    ];
+
+    return (
+      <aside className="details-panel" aria-label="פרטי ציוד">
+        <div className="details-panel-header">
+          <div>
+            <h3>פרטי ציוד</h3>
+            <p>{detailsRow.name || '-'}</p>
+          </div>
+          <button
+            type="button"
+            className="details-panel-close"
+            onClick={() => setDetailsRow(null)}
+            aria-label="סגור פרטי ציוד"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="details-panel-status">
+          {renderStatusBadge(detailsRow.status)}
+        </div>
+
+        <dl className="details-list">
+          {detailItems.map(([label, value]) => (
+            <div className="details-item" key={label}>
+              <dt>{label}</dt>
+              <dd>{value || '-'}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="details-panel-actions">
+          {isAdmin && (
+            <>
+              <button type="button" className="btn btn-edit" onClick={() => startEdit(detailsRow)}>
+                עריכה
+              </button>
+              <button type="button" className="btn btn-delete" onClick={() => handleDelete(detailsRow.id)}>
+                מחק
+              </button>
+            </>
+          )}
+          <button type="button" className="btn btn-secondary" onClick={() => openItemHistory(detailsRow)}>
+            היסטוריה
+          </button>
+        </div>
+      </aside>
+    );
+  };
+
   const handleDelete = async (id) => {
     if (!isAdmin) return;
 
@@ -663,6 +743,7 @@ function App() {
       try {
         await api.delete(`/delete/${id}`);
         alert('נמחק בהצלחה!');
+        setDetailsRow((current) => (current?.id === id ? null : current));
         fetchData();
       } catch (err) {
         alert('שגיאה: ' + err.message);
@@ -879,7 +960,11 @@ function App() {
                 </thead>
                 <tbody>
                   {selectedBuildingRows.map((row) => (
-                    <tr key={row.id}>
+                    <tr
+                      key={row.id}
+                      className={`data-row ${detailsRow?.id === row.id ? 'data-row-selected' : ''}`}
+                      onClick={(event) => openDetailsPanel(row, event)}
+                    >
                       {isAdmin && (
                         <td className="select-column">
                           <input
@@ -955,6 +1040,7 @@ function App() {
               </table>
             </div>
           )}
+          {renderDetailsPanel()}
         </section>
       </div>
     );
@@ -1017,7 +1103,11 @@ function App() {
                 </thead>
                 <tbody>
                   {selectedOfficeRows.map((row) => (
-                    <tr key={row.id}>
+                    <tr
+                      key={row.id}
+                      className={`data-row ${detailsRow?.id === row.id ? 'data-row-selected' : ''}`}
+                      onClick={(event) => openDetailsPanel(row, event)}
+                    >
                       {isAdmin && (
                         <td className="select-column">
                           <input
@@ -1093,6 +1183,7 @@ function App() {
               </table>
             </div>
           )}
+          {renderDetailsPanel()}
         </section>
 
         <section className="table-section accessory-section">
@@ -1593,7 +1684,11 @@ function App() {
                     </thead>
                     <tbody>
                       {filteredData.map((row) => (
-                        <tr key={row.id}>
+                        <tr
+                          key={row.id}
+                          className={`data-row ${detailsRow?.id === row.id ? 'data-row-selected' : ''}`}
+                          onClick={(event) => openDetailsPanel(row, event)}
+                        >
                           {isAdmin && (
                             <td className="select-column">
                               <input
@@ -1669,6 +1764,7 @@ function App() {
                   </table>
                 </div>
               )}
+              {renderDetailsPanel()}
             </section>
           </>
         )}
