@@ -665,28 +665,31 @@ app.get('/api/export-employee-equipment/:id', requireAuth, async (req, res) => {
     const equipmentHeaders = [
       'שם עובד',
       'דוא"ל',
+      'ציוד',
+      'סיריאל',
       'תאריך הפקה',
-      'סה"כ ציוד אישי',
       'חתימת עובד',
       'חתימת אחראי',
     ];
-    const employeeFormRow = {
+    const employeeFormRows = equipmentResult.rows.map((row) => ({
       'שם עובד': selected.name || '',
       'דוא"ל': selected.email || '',
+      'ציוד': [row.manufacturer, row.model].filter(Boolean).join(' - '),
+      'סיריאל': row.serial_number || '',
       'תאריך הפקה': new Date().toLocaleDateString('he-IL'),
-      'סה"כ ציוד אישי': equipmentResult.rows.length,
       'חתימת עובד': '',
       'חתימת אחראי': '',
-    };
-    const worksheet = XLSX.utils.json_to_sheet([employeeFormRow], {
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(employeeFormRows, {
       header: equipmentHeaders,
       skipHeader: false,
     });
     worksheet['!cols'] = [
       { wch: 18 },
       { wch: 28 },
+      { wch: 12 },
+      { wch: 18 },
       { wch: 14 },
-      { wch: 16 },
       { wch: 18 },
       { wch: 14 },
     ];
