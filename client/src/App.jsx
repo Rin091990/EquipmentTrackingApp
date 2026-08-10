@@ -60,6 +60,9 @@ function App() {
   const [historyBackSection, setHistoryBackSection] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
   const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
@@ -347,6 +350,36 @@ function App() {
       fetchData();
     } catch (err) {
       alert('שגיאה: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleExcelImport = async (e) => {
+    e.preventDefault();
+
+    if (!isAdmin || !importFile) return;
+
+    try {
+      setImportLoading(true);
+      setImportResult(null);
+
+      const fileBuffer = await importFile.arrayBuffer();
+      const response = await api.post('/import-excel', fileBuffer, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-File-Name': encodeURIComponent(importFile.name),
+        },
+      });
+
+      setImportResult(response.data);
+      setImportFile(null);
+      await fetchData();
+      alert(response.data.message || 'הייבוא הסתיים בהצלחה');
+    } catch (err) {
+      const responseData = err.response?.data;
+      setImportResult(responseData || null);
+      alert('שגיאה בייבוא: ' + (responseData?.error || err.message));
+    } finally {
+      setImportLoading(false);
     }
   };
 
@@ -681,7 +714,7 @@ function App() {
       ['יצרן', detailsRow.manufacturer],
       ['דגם', detailsRow.model],
       ['צבע', detailsRow.color],
-      ['מקום', detailsRow.storage],
+      ['אחסון', detailsRow.storage],
       ['סיריאל', detailsRow.serial_number],
       ['אינוונטר', detailsRow.category === 'computer' ? detailsRow.inventory_serial : '-'],
       ['תאריך', detailsRow.created_at ? new Date(detailsRow.created_at).toLocaleDateString('he-IL') : '-'],
@@ -950,7 +983,7 @@ function App() {
                     <th>יצרן</th>
                     <th>דגם</th>
                     <th>צבע</th>
-                    <th>מקום</th>
+                    <th>אחסון</th>
                     <th>סיריאל</th>
                     <th>אינוונטר</th>
                     <th>סטטוס</th>
@@ -1093,7 +1126,7 @@ function App() {
                     <th>יצרן</th>
                     <th>דגם</th>
                     <th>צבע</th>
-                    <th>מקום</th>
+                    <th>אחסון</th>
                     <th>סיריאל</th>
                     <th>אינוונטר</th>
                     <th>סטטוס</th>
@@ -1403,7 +1436,7 @@ function App() {
                     <th>יצרן</th>
                     <th>דגם</th>
                     <th>צבע</th>
-                    <th>מקום</th>
+                    <th>אחסון</th>
                     <th>סיריאל</th>
                     <th>אינוונטר</th>
                     <th>בוצע ע"י</th>
@@ -1541,7 +1574,7 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>מקום:</label>
+                <label>אחסון:</label>
                 <select name="storage" value={form.storage} onChange={handleChange}>
                   {isComputer ? (
                     <>
@@ -1627,6 +1660,49 @@ function App() {
                 שמור מידע
               </button>
             </form>
+
+            <form className="excel-import-section" onSubmit={handleExcelImport}>
+              <h3>ייבוא מאקסל</h3>
+              <p>הקובץ צריך לכלול כותרות כמו שם עובד, דוא"ל, מבנה, משרד, קטגוריה, יצרן, דגם, אחסון, סיריאל ואינוונטר.</p>
+
+              <div className="excel-import-controls">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => {
+                    setImportFile(e.target.files?.[0] || null);
+                    setImportResult(null);
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!importFile || importLoading}
+                >
+                  {importLoading ? 'מייבא...' : 'ייבא Excel'}
+                </button>
+              </div>
+
+              {importResult && (
+                <div className="import-result">
+                  <strong>
+                    יובאו {importResult.importedCount || 0} רשומות
+                    {typeof importResult.failedCount === 'number'
+                      ? `, ${importResult.failedCount} נכשלו`
+                      : ''}
+                  </strong>
+                  {importResult.errors?.length > 0 && (
+                    <ul>
+                      {importResult.errors.slice(0, 5).map((item) => (
+                        <li key={`${item.row}-${item.error}`}>
+                          שורה {item.row}: {item.error}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </form>
           </section>
         )}
 
@@ -1674,7 +1750,7 @@ function App() {
                         <th>יצרן</th>
                         <th>דגם</th>
                         <th>צבע</th>
-                        <th>מקום</th>
+                        <th>אחסון</th>
                         <th>סיריאל</th>
                         <th>אינוונטר</th>
                         <th>סטטוס</th>

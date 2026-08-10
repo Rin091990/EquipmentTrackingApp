@@ -252,6 +252,172 @@ app.post('/api/login', (req, res) => {
 });
 
 // API להוספת מידע
+const getExcelValue = (row, keys) => {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return String(value).trim();
+    }
+  }
+
+  return '';
+};
+
+const normalizeImportedCategory = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['computer', 'מחשב'].includes(normalized)) return 'computer';
+  if (['phone', 'פלאפון', 'טלפון'].includes(normalized)) return 'phone';
+  return '';
+};
+
+const normalizeImportedStatus = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['scrapped', 'נגרט', 'גרוט'].includes(normalized)) return 'scrapped';
+  return 'active';
+};
+
+const buildImportedRecord = (row) => {
+  const category = normalizeImportedCategory(getExcelValue(row, ['קטגוריה', 'category']));
+
+  return {
+    name: getExcelValue(row, ['שם עובד', 'name']),
+    email: getExcelValue(row, ['דוא"ל', 'דואל', 'email']),
+    building: getExcelValue(row, ['מבנה', 'building']),
+    office: getExcelValue(row, ['משרד', 'office']),
+    category,
+    manufacturer: getExcelValue(row, ['יצרן', 'manufacturer']),
+    model: getExcelValue(row, ['דגם', 'model']),
+    color: getExcelValue(row, ['צבע', 'color']),
+    storage: getExcelValue(row, ['אחסון', 'מקום', 'storage']),
+    serialNumber: getExcelValue(row, ['סיריאל', 'serial', 'serial_number']),
+    inventorySerial: getExcelValue(row, ['אינוונטר', 'inventory', 'inventory_serial']),
+    status: normalizeImportedStatus(getExcelValue(row, ['סטטוס', 'status'])),
+  };
+};
+
+const validateImportedRecord = (record) => {
+  if (
+    !record.name ||
+    !record.email ||
+    !record.building ||
+    !record.office ||
+    !record.category ||
+    !record.manufacturer ||
+    !record.model ||
+    !record.storage ||
+    !record.serialNumber
+  ) {
+    return 'חסרים נתוני חובה';
+  }
+
+  if (record.category === 'phone' && !record.color) {
+    return 'חסר צבע לפלאפון';
+  }
+
+  if (record.category === 'computer' && !record.inventorySerial) {
+    return 'חסר אינוונטר למחשב';
+  }
+
+  return '';
+};
+
+app.post(
+  '/api/import-excel',
+  requireAuth,
+  requireAdmin,
+  express.raw({
+    type: [
+      'application/octet-stream',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ],
+    limit: '8mb',
+  }),
+  async (req, res) => {
+    try {
+      if (!req.body || req.body.length === 0) {
+        return res.status(400).json({ error: 'לא נבחר קובץ Excel' });
+      }
+
+      const workbook = XLSX.read(req.body, { type: 'buffer' });
+      const firstSheetName = workbook.SheetNames[0];
+
+      if (!firstSheetName) {
+        return res.status(400).json({ error: 'קובץ Excel ריק' });
+      }
+
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+        defval: '',
+      });
+
+      if (rows.length === 0) {
+        return res.status(400).json({ error: 'לא נמצאו שורות לייבוא' });
+      }
+
+      const imported = [];
+      const errors = [];
+
+      await client.query('BEGIN');
+
+      for (const [index, row] of rows.entries()) {
+        const record = buildImportedRecord(row);
+        const validationError = validateImportedRecord(record);
+
+        if (validationError) {
+          errors.push({ row: index + 2, error: validationError });
+          continue;
+        }
+
+        const result = await client.query(
+          `INSERT INTO forms
+            (name, email, building, office, category, manufacturer, model, color, storage, serial_number, inventory_serial, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           RETURNING *`,
+          [
+            record.name,
+            record.email,
+            record.building,
+            record.office,
+            record.category,
+            record.manufacturer,
+            record.model,
+            record.category === 'computer' ? 'שחור' : record.color,
+            record.storage,
+            record.serialNumber,
+            record.category === 'computer' ? record.inventorySerial : null,
+            record.status,
+          ]
+        );
+
+        imported.push(result.rows[0]);
+      }
+
+      await client.query('COMMIT');
+
+      if (imported.length === 0) {
+        return res.status(400).json({
+          error: 'לא יובאו רשומות',
+          importedCount: 0,
+          failedCount: errors.length,
+          errors,
+        });
+      }
+
+      res.status(201).json({
+        message: `יובאו ${imported.length} רשומות בהצלחה`,
+        importedCount: imported.length,
+        failedCount: errors.length,
+        errors,
+        rows: imported,
+      });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error(err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
 app.post('/api/submit', requireAuth, requireAdmin, async (req, res) => {
   try {
     const {
@@ -455,7 +621,7 @@ app.post('/api/export-selected', requireAuth, requireAdmin, async (req, res) => 
       'יצרן': row.manufacturer || '',
       'דגם': row.model || '',
       'צבע': row.color || '',
-      'מקום': row.storage || '',
+      'אחסון': row.storage || '',
       'סיריאל': row.serial_number || '',
       'אינוונטר': row.inventory_serial || '',
       'סטטוס': row.status === 'scrapped' ? 'נגרט' : 'פעיל',
