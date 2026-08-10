@@ -241,6 +241,61 @@ body {
   padding-top: 15px;
 }
 
+.excel-import-section {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.excel-import-section h3 {
+  color: var(--brand-navy);
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.excel-import-section p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.excel-import-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.excel-import-controls input[type='file'] {
+  border: 1px dashed #cfd8e3;
+  border-radius: 6px;
+  color: var(--text);
+  padding: 10px;
+  width: 100%;
+}
+
+.excel-import-controls .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.import-result {
+  background: #f8fbfe;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-top: 12px;
+  padding: 10px 12px;
+}
+
+.import-result strong {
+  color: var(--brand-navy);
+}
+
+.import-result ul {
+  color: #c62828;
+  margin: 8px 18px 0 0;
+}
+
 .table-section {
   grid-column: 1 / 3;
 }
