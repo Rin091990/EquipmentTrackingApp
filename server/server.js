@@ -642,6 +642,70 @@ app.post('/api/export-selected', requireAuth, requireAdmin, async (req, res) => 
 });
 
 // API לקבלת כל הנתונים
+app.get('/api/export-employee-equipment/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const selectedResult = await client.query('SELECT * FROM forms WHERE id = $1', [id]);
+
+    if (selectedResult.rowCount === 0) {
+      return res.status(404).json({ error: 'הרשומה לא נמצאה' });
+    }
+
+    const selected = selectedResult.rows[0];
+    const equipmentResult = await client.query(
+      `SELECT *
+       FROM forms
+       WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
+          OR LOWER(TRIM(name)) = LOWER(TRIM($2))
+       ORDER BY created_at DESC`,
+      [selected.email || '', selected.name || '']
+    );
+
+    const workbook = XLSX.utils.book_new();
+    const equipmentHeaders = [
+      'שם עובד',
+      'דוא"ל',
+      'תאריך הפקה',
+      'סה"כ ציוד אישי',
+      'חתימת עובד',
+      'חתימת אחראי',
+    ];
+    const employeeFormRow = {
+      'שם עובד': selected.name || '',
+      'דוא"ל': selected.email || '',
+      'תאריך הפקה': new Date().toLocaleDateString('he-IL'),
+      'סה"כ ציוד אישי': equipmentResult.rows.length,
+      'חתימת עובד': '',
+      'חתימת אחראי': '',
+    };
+    const worksheet = XLSX.utils.json_to_sheet([employeeFormRow], {
+      header: equipmentHeaders,
+      skipHeader: false,
+    });
+    worksheet['!cols'] = [
+      { wch: 18 },
+      { wch: 28 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 14 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'טופס ציוד');
+
+    const safeName = String(selected.name || 'employee').replace(/[\\/:*?"<>|]/g, '-');
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=employee-equipment-${encodeURIComponent(safeName)}.xlsx`
+    );
+    res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/data', requireAuth, async (req, res) => {
   try {
     const result = await client.query('SELECT * FROM forms ORDER BY created_at DESC');
