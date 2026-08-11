@@ -159,6 +159,50 @@ function App() {
     </button>
   );
 
+  const renderCompactEquipmentHeaders = () => (
+    <>
+      {isAdmin && <th className="select-column"></th>}
+      <th>{renderSortableHeader('שם עובד', 'name')}</th>
+      <th>דוא"ל</th>
+      <th>{renderSortableHeader('מבנה', 'building')}</th>
+      <th>משרד</th>
+      <th>תאריך</th>
+    </>
+  );
+
+  const renderCompactEquipmentCells = (row, buildingFallback = '-') => (
+    <>
+      {isAdmin && (
+        <td className="select-column">
+          <input
+            type="checkbox"
+            checked={selectedRowIds.includes(row.id)}
+            onChange={() => toggleRowActions(row.id)}
+            className="row-action-checkbox"
+            aria-label="בחר רשומה"
+          />
+        </td>
+      )}
+      <td className="name-cell" title={row.name || ''}>
+        {row.name || '-'}
+      </td>
+      <td className="email-cell" title={row.email || ''}>
+        <span className="email-cell-content">{row.email || '-'}</span>
+      </td>
+      <td>{row.building || buildingFallback}</td>
+      <td>
+        {row.office ? (
+          <button type="button" className="office-link-button" onClick={() => openOfficeDetails(row)}>
+            {row.office}
+          </button>
+        ) : (
+          '-'
+        )}
+      </td>
+      <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
+    </>
+  );
+
   const buildings = useMemo(() => {
     const names = data
       .map((row) => row.building?.trim())
@@ -452,6 +496,23 @@ function App() {
     });
   };
 
+  useEffect(() => {
+    if (!editingId || detailsRow?.id === editingId) return;
+
+    setEditingId(null);
+    setSelectedActionId(null);
+    setSelectedRowIds([]);
+    setActiveEditField(null);
+    setEditForm({
+      name: '',
+      email: '',
+      building: '',
+      office: '',
+      status: 'active',
+      inventorySerial: '',
+    });
+  }, [detailsRow, editingId]);
+
   const saveEdit = async (id) => {
     if (!isAdmin) return;
 
@@ -555,6 +616,7 @@ function App() {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const renderSerialCell = (row) => {
     if (!row.serial_number) return '-';
 
@@ -565,6 +627,7 @@ function App() {
     );
   };
 
+  // eslint-disable-next-line no-unused-vars
   const renderInventorySerialCell = (row) => {
     if (row.category !== 'computer') return '-';
 
@@ -581,6 +644,7 @@ function App() {
     );
   };
 
+  // eslint-disable-next-line no-unused-vars
   const renderStatusCell = (row) => {
     if (editingId !== row.id) {
       return renderStatusBadge(row.status);
@@ -630,20 +694,6 @@ function App() {
         rowType: 'original',
       },
     ];
-  };
-
-  const renderOfficeCell = (row) => {
-    if (editingId === row.id) {
-      return renderEditableCell(row, 'office');
-    }
-
-    if (!row.office) return '-';
-
-    return (
-      <button type="button" className="office-link-button" onClick={() => openOfficeDetails(row)}>
-        {row.office}
-      </button>
-    );
   };
 
   const toggleRowActions = (rowId) => {
@@ -723,9 +773,9 @@ function App() {
   const renderDetailsPanel = () => {
     if (!detailsRow) return null;
 
+    const isDetailsEditing = editingId === detailsRow.id;
     const detailItems = [
-      ['שם עובד', detailsRow.name],
-      ['דוא"ל', detailsRow.email],
+      ['סטטוס', renderStatusBadge(detailsRow.status)],
       ['מבנה', detailsRow.building],
       ['משרד', detailsRow.office],
       ['קטגוריה', detailsRow.category === 'computer' ? 'מחשב' : 'פלאפון'],
@@ -755,10 +805,6 @@ function App() {
           </button>
         </div>
 
-        <div className="details-panel-status">
-          {renderStatusBadge(detailsRow.status)}
-        </div>
-
         <dl className="details-list">
           {detailItems.map(([label, value]) => (
             <div className="details-item" key={label}>
@@ -768,15 +814,77 @@ function App() {
           ))}
         </dl>
 
+        {isAdmin && isDetailsEditing && (
+          <div className="details-edit-panel">
+            <h4>עריכת פרטי שיוך</h4>
+            <label>
+              שם עובד
+              <input
+                type="text"
+                name="name"
+                value={editForm.name}
+                onChange={handleEditChange}
+              />
+            </label>
+            <label>
+              דוא"ל
+              <input
+                type="email"
+                name="email"
+                value={editForm.email}
+                onChange={handleEditChange}
+              />
+            </label>
+            <label>
+              מבנה
+              <input
+                type="text"
+                name="building"
+                value={editForm.building}
+                onChange={handleEditChange}
+              />
+            </label>
+            <label>
+              משרד
+              <input
+                type="text"
+                name="office"
+                value={editForm.office}
+                onChange={handleEditChange}
+              />
+            </label>
+            <label>
+              סטטוס
+              <select name="status" value={editForm.status} onChange={handleEditChange}>
+                <option value="active">פעיל</option>
+                <option value="scrapped">נגרט</option>
+              </select>
+            </label>
+          </div>
+        )}
+
         <div className="details-panel-actions">
           {isAdmin && (
             <>
-              <button type="button" className="btn btn-edit" onClick={() => startEdit(detailsRow)}>
-                עריכה
-              </button>
-              <button type="button" className="btn btn-delete" onClick={() => handleDelete(detailsRow.id)}>
-                מחק
-              </button>
+              {isDetailsEditing ? (
+                <>
+                  <button type="button" className="btn btn-confirm" onClick={() => saveEdit(detailsRow.id)}>
+                    אישור
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={cancelEdit}>
+                    ביטול
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="btn btn-edit" onClick={() => startEdit(detailsRow)}>
+                    עריכה
+                  </button>
+                  <button type="button" className="btn btn-delete" onClick={() => handleDelete(detailsRow.id)}>
+                    מחק
+                  </button>
+                </>
+              )}
             </>
           )}
           <button type="button" className="btn btn-secondary" onClick={() => openItemHistory(detailsRow)}>
@@ -999,21 +1107,7 @@ function App() {
               <table>
                 <thead>
                   <tr>
-                    {isAdmin && <th className="select-column"></th>}
-                    <th>{renderSortableHeader('שם עובד', 'name')}</th>
-                    <th>דוא"ל</th>
-                    <th>{renderSortableHeader('מבנה', 'building')}</th>
-                    <th>משרד</th>
-                    <th>קטגוריה</th>
-                    <th>יצרן</th>
-                    <th>דגם</th>
-                    <th>צבע</th>
-                    <th>אחסון</th>
-                    <th>סיריאל</th>
-                    <th>אינוונטר</th>
-                    <th>סטטוס</th>
-                    <th>תאריך</th>
-                    {isAdmin && <th className="actions-column">פעולות</th>}
+                    {renderCompactEquipmentHeaders()}
                   </tr>
                 </thead>
                 <tbody>
@@ -1023,75 +1117,7 @@ function App() {
                       className={`data-row ${detailsRow?.id === row.id ? 'data-row-selected' : ''}`}
                       onClick={(event) => openDetailsPanel(row, event)}
                     >
-                      {isAdmin && (
-                        <td className="select-column">
-                          <input
-                            type="checkbox"
-                            checked={selectedRowIds.includes(row.id)}
-                            onChange={() => toggleRowActions(row.id)}
-                            className="row-action-checkbox"
-                            aria-label="בחר פעולות לרשומה"
-                          />
-                        </td>
-                      )}
-                      <td className="name-cell" title={row.name || ''}>
-                        {renderEditableCell(row, 'name')}
-                      </td>
-                      <td className="email-cell" title={row.email || ''}>
-                        <span className="email-cell-content">{renderEditableCell(row, 'email')}</span>
-                      </td>
-                      <td>{renderEditableCell(row, 'building', selectedBuilding || '-')}</td>
-                      <td>{renderOfficeCell(row)}</td>
-                      <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
-                      <td>{row.manufacturer || '-'}</td>
-                      <td>{row.model || '-'}</td>
-                      <td>{row.color || '-'}</td>
-                      <td>{row.storage || '-'}</td>
-                      <td>{renderSerialCell(row)}</td>
-                      <td>{renderInventorySerialCell(row)}</td>
-                      <td>{renderStatusCell(row)}</td>
-                      <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
-                      {isAdmin && (
-                        <td className="table-actions">
-                          {editingId === row.id ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => saveEdit(row.id)}
-                                className="btn btn-confirm"
-                              >
-                                אישור
-                              </button>
-                              <button
-                                type="button"
-                                onClick={cancelEdit}
-                                className="btn btn-secondary"
-                              >
-                                ביטול
-                              </button>
-                            </>
-                          ) : selectedActionId === row.id ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => startEdit(row)}
-                                className="btn btn-edit"
-                              >
-                                עריכה
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(row.id)}
-                                className="btn btn-delete"
-                              >
-                                מחק
-                              </button>
-                            </>
-                          ) : (
-                            <span className="empty-actions">-</span>
-                          )}
-                        </td>
-                      )}
+                      {renderCompactEquipmentCells(row, selectedBuilding || '-')}
                     </tr>
                   ))}
                 </tbody>
@@ -1142,21 +1168,7 @@ function App() {
               <table>
                 <thead>
                   <tr>
-                    {isAdmin && <th className="select-column"></th>}
-                    <th>{renderSortableHeader('שם עובד', 'name')}</th>
-                    <th>דוא"ל</th>
-                    <th>{renderSortableHeader('מבנה', 'building')}</th>
-                    <th>משרד</th>
-                    <th>קטגוריה</th>
-                    <th>יצרן</th>
-                    <th>דגם</th>
-                    <th>צבע</th>
-                    <th>אחסון</th>
-                    <th>סיריאל</th>
-                    <th>אינוונטר</th>
-                    <th>סטטוס</th>
-                    <th>תאריך</th>
-                    {isAdmin && <th className="actions-column">פעולות</th>}
+                    {renderCompactEquipmentHeaders()}
                   </tr>
                 </thead>
                 <tbody>
@@ -1166,75 +1178,7 @@ function App() {
                       className={`data-row ${detailsRow?.id === row.id ? 'data-row-selected' : ''}`}
                       onClick={(event) => openDetailsPanel(row, event)}
                     >
-                      {isAdmin && (
-                        <td className="select-column">
-                          <input
-                            type="checkbox"
-                            checked={selectedRowIds.includes(row.id)}
-                            onChange={() => toggleRowActions(row.id)}
-                            className="row-action-checkbox"
-                            aria-label="בחר פעולות לרשומה"
-                          />
-                        </td>
-                      )}
-                      <td className="name-cell" title={row.name || ''}>
-                        {renderEditableCell(row, 'name')}
-                      </td>
-                      <td className="email-cell" title={row.email || ''}>
-                        <span className="email-cell-content">{renderEditableCell(row, 'email')}</span>
-                      </td>
-                      <td>{renderEditableCell(row, 'building')}</td>
-                      <td>{renderOfficeCell(row)}</td>
-                      <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
-                      <td>{row.manufacturer || '-'}</td>
-                      <td>{row.model || '-'}</td>
-                      <td>{row.color || '-'}</td>
-                      <td>{row.storage || '-'}</td>
-                      <td>{renderSerialCell(row)}</td>
-                      <td>{renderInventorySerialCell(row)}</td>
-                      <td>{renderStatusCell(row)}</td>
-                      <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
-                      {isAdmin && (
-                        <td className="table-actions">
-                          {editingId === row.id ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => saveEdit(row.id)}
-                                className="btn btn-confirm"
-                              >
-                                אישור
-                              </button>
-                              <button
-                                type="button"
-                                onClick={cancelEdit}
-                                className="btn btn-secondary"
-                              >
-                                ביטול
-                              </button>
-                            </>
-                          ) : selectedActionId === row.id ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => startEdit(row)}
-                                className="btn btn-edit"
-                              >
-                                עריכה
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(row.id)}
-                                className="btn btn-delete"
-                              >
-                                מחק
-                              </button>
-                            </>
-                          ) : (
-                            <span className="empty-actions">-</span>
-                          )}
-                        </td>
-                      )}
+                      {renderCompactEquipmentCells(row)}
                     </tr>
                   ))}
                 </tbody>
@@ -1766,21 +1710,7 @@ function App() {
                   <table>
                     <thead>
                       <tr>
-                        {isAdmin && <th className="select-column"></th>}
-                        <th>{renderSortableHeader('שם עובד', 'name')}</th>
-                        <th>דוא"ל</th>
-                        <th>{renderSortableHeader('מבנה', 'building')}</th>
-                        <th>משרד</th>
-                        <th>קטגוריה</th>
-                        <th>יצרן</th>
-                        <th>דגם</th>
-                        <th>צבע</th>
-                        <th>אחסון</th>
-                        <th>סיריאל</th>
-                        <th>אינוונטר</th>
-                        <th>סטטוס</th>
-                        <th>תאריך</th>
-                        {isAdmin && <th className="actions-column">פעולות</th>}
+                        {renderCompactEquipmentHeaders()}
                       </tr>
                     </thead>
                     <tbody>
@@ -1790,75 +1720,7 @@ function App() {
                           className={`data-row ${detailsRow?.id === row.id ? 'data-row-selected' : ''}`}
                           onClick={(event) => openDetailsPanel(row, event)}
                         >
-                          {isAdmin && (
-                            <td className="select-column">
-                              <input
-                                type="checkbox"
-                                checked={selectedRowIds.includes(row.id)}
-                                onChange={() => toggleRowActions(row.id)}
-                                className="row-action-checkbox"
-                                aria-label="בחר פעולות לרשומה"
-                              />
-                            </td>
-                          )}
-                          <td className="name-cell" title={row.name || ''}>
-                            {renderEditableCell(row, 'name')}
-                          </td>
-                          <td className="email-cell" title={row.email || ''}>
-                            <span className="email-cell-content">{renderEditableCell(row, 'email')}</span>
-                          </td>
-                          <td>{renderEditableCell(row, 'building')}</td>
-                          <td>{renderOfficeCell(row)}</td>
-                          <td>{row.category === 'computer' ? 'מחשב' : 'פלאפון'}</td>
-                          <td>{row.manufacturer || '-'}</td>
-                          <td>{row.model || '-'}</td>
-                          <td>{row.color || '-'}</td>
-                          <td>{row.storage || '-'}</td>
-                          <td>{renderSerialCell(row)}</td>
-                          <td>{renderInventorySerialCell(row)}</td>
-                          <td>{renderStatusCell(row)}</td>
-                          <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
-                          {isAdmin && (
-                            <td className="table-actions">
-                              {editingId === row.id ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => saveEdit(row.id)}
-                                    className="btn btn-confirm"
-                                  >
-                                    אישור
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={cancelEdit}
-                                    className="btn btn-secondary"
-                                  >
-                                    ביטול
-                                  </button>
-                                </>
-                              ) : selectedActionId === row.id ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => startEdit(row)}
-                                    className="btn btn-edit"
-                                  >
-                                    עריכה
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(row.id)}
-                                    className="btn btn-delete"
-                                  >
-                                    מחק
-                                  </button>
-                                </>
-                              ) : (
-                                <span className="empty-actions">-</span>
-                              )}
-                            </td>
-                          )}
+                          {renderCompactEquipmentCells(row)}
                         </tr>
                       ))}
                     </tbody>
