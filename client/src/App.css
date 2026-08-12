@@ -15,6 +15,7 @@
   --line: #dfe7f0;
   --muted: #667085;
   --text: #172033;
+  --focus-ring: #ffbf47;
   --shadow: 0 12px 30px rgba(6, 43, 99, 0.1);
 }
 
@@ -31,6 +32,17 @@ body {
   color: var(--text);
   min-height: 100vh;
   direction: rtl;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(255, 191, 71, 0.28);
 }
 
 .app-container {
@@ -162,6 +174,12 @@ body {
   color: white;
   box-shadow: 0 14px 28px rgba(6, 43, 99, 0.2);
   transform: translateY(-2px);
+}
+
+.section-button:focus-visible,
+.building-button:focus-visible,
+.btn:focus-visible {
+  outline-offset: 4px;
 }
 
 .placeholder-section {
@@ -327,7 +345,6 @@ body {
 
 .form-group input:focus,
 .form-group select:focus {
-  outline: none;
   border-color: var(--brand-cyan);
   box-shadow: 0 0 0 3px rgba(9, 184, 200, 0.14);
 }
@@ -447,6 +464,10 @@ body {
   accent-color: var(--brand-cyan);
 }
 
+.row-action-checkbox:focus-visible {
+  outline-offset: 2px;
+}
+
 .select-column {
   width: 34px;
   min-width: 34px;
@@ -494,7 +515,6 @@ body {
 }
 
 .table-edit-input:focus {
-  outline: none;
   border-color: var(--brand-cyan);
   box-shadow: 0 0 0 3px rgba(9, 184, 200, 0.14);
 }
@@ -545,6 +565,10 @@ body {
   background: var(--brand-cyan);
   border-color: var(--brand-cyan);
   color: white;
+}
+
+.office-link-button:focus-visible {
+  border-color: var(--brand-navy);
 }
 
 .history-link-button {
@@ -711,7 +735,6 @@ body {
 .details-edit-panel select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(17, 184, 194, 0.14);
-  outline: none;
 }
 
 .details-panel-actions {
@@ -920,7 +943,6 @@ body {
 }
 
 .search-input:focus {
-  outline: none;
   border-color: var(--brand-cyan);
   box-shadow: 0 0 0 3px rgba(9, 184, 200, 0.14);
 }
@@ -966,6 +988,10 @@ table th {
 .sortable-header.active {
   color: var(--brand-cyan-dark);
   text-decoration: underline;
+}
+
+.sortable-header:focus-visible {
+  border-radius: 4px;
 }
 
 table td {
