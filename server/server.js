@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const XLSX = require('xlsx');
 const cors = require('cors');
 const crypto = require('crypto');
@@ -78,12 +78,19 @@ const requireAdmin = (req, res, next) => {
 };
 
 // התחבר ל-Neon
-const client = new Client({
+const client = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
-client.connect().then(() => {
+client.on('error', (err) => {
+  console.error('PostgreSQL idle client error:', err.message);
+});
+
+client.query('SELECT 1').then(() => {
   console.log('✅ התחברנו ל-Neon בהצלחה!');
 }).catch(err => {
   console.error('❌ שגיאה בחיבור:', err.message);
@@ -356,8 +363,10 @@ app.post(
 
       const imported = [];
       const errors = [];
+      const txClient = await client.connect();
 
-      await client.query('BEGIN');
+      try {
+        await txClient.query('BEGIN');
 
       for (const [index, row] of rows.entries()) {
         const record = buildImportedRecord(row);
@@ -368,7 +377,7 @@ app.post(
           continue;
         }
 
-        const result = await client.query(
+        const result = await txClient.query(
           `INSERT INTO forms
             (name, email, building, office, category, manufacturer, model, color, storage, serial_number, inventory_serial, status)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -392,7 +401,13 @@ app.post(
         imported.push(result.rows[0]);
       }
 
-      await client.query('COMMIT');
+        await txClient.query('COMMIT');
+      } catch (err) {
+        await txClient.query('ROLLBACK').catch(() => {});
+        throw err;
+      } finally {
+        txClient.release();
+      }
 
       if (imported.length === 0) {
         return res.status(400).json({
@@ -411,7 +426,6 @@ app.post(
         rows: imported,
       });
     } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
       console.error(err);
       res.status(500).json({ error: err.message });
     }
