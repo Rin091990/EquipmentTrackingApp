@@ -90,13 +90,22 @@ textarea:focus-visible,
   text-align: center;
 }
 
-.error-message {
-  color: #c62828;
-  background: #ffebee;
+.error-message,
+.status-message {
   border-radius: 5px;
   margin-bottom: 15px;
   padding: 10px;
   text-align: center;
+}
+
+.status-message-info {
+  color: var(--muted);
+}
+
+.error-message,
+.status-message-error {
+  color: #c62828;
+  background: #ffebee;
 }
 
 .header {
