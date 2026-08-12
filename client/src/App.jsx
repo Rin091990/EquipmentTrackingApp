@@ -110,6 +110,17 @@ function App() {
       </span>
     );
   };
+
+  const StatusMessage = ({ children, tone = 'info', assertive = false }) => (
+    <p
+      className={`status-message status-message-${tone}`}
+      role={assertive ? 'alert' : 'status'}
+      aria-live={assertive ? 'assertive' : 'polite'}
+    >
+      {children}
+    </p>
+  );
+
   const isInteractiveTarget = (target) =>
     Boolean(target.closest('button, input, select, a, textarea, label'));
 
@@ -960,7 +971,11 @@ function App() {
               />
             </div>
 
-            {loginError && <p className="error-message">{loginError}</p>}
+            {loginError && (
+              <StatusMessage tone="error" assertive>
+                {loginError}
+              </StatusMessage>
+            )}
 
             <button type="submit" className="btn btn-primary">
               התחבר
@@ -1042,9 +1057,9 @@ function App() {
         <section className="placeholder-section">
           <h2>מבנים</h2>
           {loading ? (
-            <p>טוען מבנים...</p>
+            <StatusMessage>טוען מבנים...</StatusMessage>
           ) : buildings.length === 0 ? (
-            <p>אין מבנים עדיין.</p>
+            <StatusMessage>אין מבנים עדיין.</StatusMessage>
           ) : (
             <div className="buildings-grid">
               {buildings.map((building) => (
@@ -1098,7 +1113,7 @@ function App() {
 
         <section className="table-section building-details-section">
           <div className="table-header">
-            <h2>הנתונים של מבנה {selectedBuilding} ({selectedBuildingRows.length})</h2>
+            <h2 aria-live="polite">הנתונים של מבנה {selectedBuilding} ({selectedBuildingRows.length})</h2>
             <input
               type="search"
               className="search-input"
@@ -1110,9 +1125,9 @@ function App() {
           {renderBulkActions()}
 
           {loading ? (
-            <p>טוען נתונים...</p>
+            <StatusMessage>טוען נתונים...</StatusMessage>
           ) : selectedBuildingRows.length === 0 ? (
-            <p>אין רשומות למבנה הזה.</p>
+            <StatusMessage>אין רשומות למבנה הזה.</StatusMessage>
           ) : (
             <div className="table-wrapper">
               <table>
@@ -1166,14 +1181,14 @@ function App() {
 
         <section className="table-section building-details-section">
           <div className="table-header">
-            <h2>הציוד במשרד {selectedOffice} ({selectedOfficeRows.length})</h2>
+            <h2 aria-live="polite">הציוד במשרד {selectedOffice} ({selectedOfficeRows.length})</h2>
           </div>
           {renderBulkActions()}
 
           {loading ? (
-            <p>טוען נתונים...</p>
+            <StatusMessage>טוען נתונים...</StatusMessage>
           ) : selectedOfficeRows.length === 0 ? (
-            <p>אין ציוד במשרד הזה.</p>
+            <StatusMessage>אין ציוד במשרד הזה.</StatusMessage>
           ) : (
             <div className="table-wrapper">
               <table>
@@ -1201,7 +1216,7 @@ function App() {
 
         <section className="table-section accessory-section">
           <div className="table-header">
-            <h2>ציוד נלווה במשרד {selectedOffice} ({selectedOfficeAccessories.length})</h2>
+            <h2 aria-live="polite">ציוד נלווה במשרד {selectedOffice} ({selectedOfficeAccessories.length})</h2>
           </div>
 
           {isAdmin && (
@@ -1294,7 +1309,7 @@ function App() {
           )}
 
           {selectedOfficeAccessories.length === 0 ? (
-            <p>אין ציוד נלווה במשרד הזה.</p>
+            <StatusMessage>אין ציוד נלווה במשרד הזה.</StatusMessage>
           ) : (
             <div className="accessory-list">
               {selectedOfficeAccessories.map((item) => (
@@ -1378,13 +1393,13 @@ function App() {
 
         <section className="table-section">
           <div className="table-header">
-            <h2>שינויים בפריט ({historyRows.length})</h2>
+            <h2 aria-live="polite">שינויים בפריט ({historyRows.length})</h2>
           </div>
 
           {historyLoading ? (
-            <p>טוען היסטוריה...</p>
+            <StatusMessage>טוען היסטוריה...</StatusMessage>
           ) : historyRows.length === 0 ? (
-            <p>אין היסטוריה לפריט הזה עדיין.</p>
+            <StatusMessage>אין היסטוריה לפריט הזה עדיין.</StatusMessage>
           ) : (
             <div className="table-wrapper history-table-wrapper">
               <table className="history-table">
@@ -1664,7 +1679,11 @@ function App() {
               </div>
 
               {importResult && (
-                <div className="import-result">
+                <div
+                  className="import-result"
+                  role={importResult.errors?.length > 0 ? 'alert' : 'status'}
+                  aria-live={importResult.errors?.length > 0 ? 'assertive' : 'polite'}
+                >
                   <strong>
                     יובאו {importResult.importedCount || 0} רשומות
                     {typeof importResult.failedCount === 'number'
@@ -1691,7 +1710,7 @@ function App() {
             <section className="table-section">
               <div className="table-header">
                 <div className="table-title-actions">
-                  <h2>הנתונים השמורים ({filteredData.length})</h2>
+                  <h2 aria-live="polite">הנתונים השמורים ({filteredData.length})</h2>
                   <button
                     type="button"
                     className="btn btn-status-filter"
@@ -1713,9 +1732,9 @@ function App() {
               {renderBulkActions()}
 
               {loading ? (
-                <p>טוען נתונים...</p>
+                <StatusMessage>טוען נתונים...</StatusMessage>
               ) : filteredData.length === 0 ? (
-                <p>אין נתונים עדיין.</p>
+                <StatusMessage>אין נתונים עדיין.</StatusMessage>
               ) : (
                 <div className="table-wrapper">
                   <table>
