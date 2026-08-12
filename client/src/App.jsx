@@ -577,11 +577,20 @@ function App() {
       return rowValue || fallback;
     }
 
+    const editFieldLabels = {
+      name: 'שם עובד',
+      email: 'דוא"ל',
+      building: 'מבנה',
+      office: 'משרד',
+      inventorySerial: 'אינוונטר',
+    };
+
     if (activeEditField === field) {
       return (
         <input
           type={field === 'email' ? 'email' : 'text'}
           name={field}
+          aria-label={`עריכת ${editFieldLabels[field] || field} עבור ${row.name || 'רשומה'}`}
           value={editForm[field]}
           onChange={handleEditChange}
           onKeyDown={(e) => {
@@ -675,6 +684,7 @@ function App() {
     return (
       <select
         name="status"
+        aria-label={`עריכת סטטוס עבור ${row.name || 'רשומה'}`}
         value={editForm.status}
         onChange={handleEditChange}
         className="table-edit-input table-edit-input-status"
@@ -839,45 +849,49 @@ function App() {
         {isAdmin && isDetailsEditing && (
           <div className="details-edit-panel">
             <h4>עריכת פרטי שיוך</h4>
-            <label>
+            <label htmlFor="edit-name">
               שם עובד
               <input
+                id="edit-name"
                 type="text"
                 name="name"
                 value={editForm.name}
                 onChange={handleEditChange}
               />
             </label>
-            <label>
+            <label htmlFor="edit-email">
               דוא"ל
               <input
+                id="edit-email"
                 type="email"
                 name="email"
                 value={editForm.email}
                 onChange={handleEditChange}
               />
             </label>
-            <label>
+            <label htmlFor="edit-building">
               מבנה
               <input
+                id="edit-building"
                 type="text"
                 name="building"
                 value={editForm.building}
                 onChange={handleEditChange}
               />
             </label>
-            <label>
+            <label htmlFor="edit-office">
               משרד
               <input
+                id="edit-office"
                 type="text"
                 name="office"
                 value={editForm.office}
                 onChange={handleEditChange}
               />
             </label>
-            <label>
+            <label htmlFor="edit-status">
               סטטוס
-              <select name="status" value={editForm.status} onChange={handleEditChange}>
+              <select id="edit-status" name="status" value={editForm.status} onChange={handleEditChange}>
                 <option value="active">פעיל</option>
                 <option value="scrapped">נגרט</option>
               </select>
@@ -948,8 +962,9 @@ function App() {
 
           <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label>שם משתמש:</label>
+              <label htmlFor="login-username">שם משתמש:</label>
               <input
+                id="login-username"
                 type="text"
                 name="username"
                 value={loginForm.username}
@@ -960,8 +975,9 @@ function App() {
             </div>
 
             <div className="form-group">
-              <label>סיסמה:</label>
+              <label htmlFor="login-password">סיסמה:</label>
               <input
+                id="login-password"
                 type="password"
                 name="password"
                 value={loginForm.password}
@@ -1115,6 +1131,7 @@ function App() {
           <div className="table-header">
             <h2 aria-live="polite">הנתונים של מבנה {selectedBuilding} ({selectedBuildingRows.length})</h2>
             <input
+              aria-label="חיפוש רשומות במבנה"
               type="search"
               className="search-input"
               placeholder="חיפוש לפי שם עובד או email"
@@ -1222,8 +1239,9 @@ function App() {
           {isAdmin && (
             <form className="accessory-form" onSubmit={handleAccessorySubmit}>
               <div className="form-group">
-                <label>סוג ציוד:</label>
+                <label htmlFor="accessory-type">סוג ציוד:</label>
                 <select
+                  id="accessory-type"
                   name="type"
                   value={accessoryForm.type}
                   onChange={handleAccessoryChange}
@@ -1236,8 +1254,9 @@ function App() {
 
               {isMonitorAccessory && (
                 <div className="form-group">
-                  <label>גודל:</label>
+                  <label htmlFor="accessory-size">גודל:</label>
                   <select
+                    id="accessory-size"
                     name="size"
                     value={accessoryForm.size}
                     onChange={handleAccessoryChange}
@@ -1249,8 +1268,9 @@ function App() {
               )}
 
               <div className="form-group">
-                <label>יצרן:</label>
+                <label htmlFor="accessory-manufacturer">יצרן:</label>
                 <input
+                  id="accessory-manufacturer"
                   type="text"
                   name="manufacturer"
                   placeholder="הזן יצרן"
@@ -1262,8 +1282,9 @@ function App() {
 
               {isPrinterAccessory && (
                 <div className="form-group">
-                  <label>דגם:</label>
+                  <label htmlFor="accessory-model">דגם:</label>
                   <input
+                    id="accessory-model"
                     type="text"
                     name="model"
                     placeholder="הזן דגם"
@@ -1277,8 +1298,9 @@ function App() {
               {showAccessorySerialFields && (
                 <>
                   <div className="form-group">
-                    <label>סיריאל:</label>
+                    <label htmlFor="accessory-serial-number">סיריאל:</label>
                     <input
+                      id="accessory-serial-number"
                       type="text"
                       name="serialNumber"
                       placeholder="הזן סיריאל"
@@ -1289,8 +1311,9 @@ function App() {
                   </div>
 
                   <div className="form-group">
-                    <label>אינוונטר:</label>
+                    <label htmlFor="accessory-inventory-serial">אינוונטר:</label>
                     <input
+                      id="accessory-inventory-serial"
                       type="text"
                       name="inventorySerial"
                       placeholder="הזן אינוונטר"
@@ -1505,8 +1528,9 @@ function App() {
             <h2>הזנת מידע</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>שם עובד:</label>
+                <label htmlFor="equipment-name">שם עובד:</label>
                 <input
+                  id="equipment-name"
                   type="text"
                   name="name"
                   placeholder="הזן שם עובד"
@@ -1517,8 +1541,9 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>דוא"ל:</label>
+                <label htmlFor="equipment-email">דוא"ל:</label>
                 <input
+                  id="equipment-email"
                   type="email"
                   name="email"
                   placeholder="הזן דוא״ל"
@@ -1529,8 +1554,9 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>מבנה:</label>
+                <label htmlFor="equipment-building">מבנה:</label>
                 <input
+                  id="equipment-building"
                   type="text"
                   name="building"
                   placeholder="הזן מבנה"
@@ -1541,8 +1567,9 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>משרד:</label>
+                <label htmlFor="equipment-office">משרד:</label>
                 <input
+                  id="equipment-office"
                   type="text"
                   name="office"
                   placeholder="הזן משרד"
@@ -1553,24 +1580,24 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>קטגוריה:</label>
-                <select name="category" value={form.category} onChange={handleChange}>
+                <label htmlFor="equipment-category">קטגוריה:</label>
+                <select id="equipment-category" name="category" value={form.category} onChange={handleChange}>
                   <option value="computer">מחשב</option>
                   <option value="phone">פלאפון</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>סטטוס:</label>
-                <select name="status" value={form.status} onChange={handleChange}>
+                <label htmlFor="equipment-status">סטטוס:</label>
+                <select id="equipment-status" name="status" value={form.status} onChange={handleChange}>
                   <option value="active">פעיל</option>
                   <option value="scrapped">נגרט</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>אחסון:</label>
-                <select name="storage" value={form.storage} onChange={handleChange}>
+                <label htmlFor="equipment-storage">אחסון:</label>
+                <select id="equipment-storage" name="storage" value={form.storage} onChange={handleChange}>
                   {isComputer ? (
                     <>
                       <option value="512GB">512GB</option>
@@ -1587,8 +1614,9 @@ function App() {
 
               <div className="equipment-fields">
                 <div className="form-group">
-                  <label>יצרן:</label>
+                  <label htmlFor="equipment-manufacturer">יצרן:</label>
                   <input
+                    id="equipment-manufacturer"
                     type="text"
                     name="manufacturer"
                     placeholder="הזן יצרן"
@@ -1599,8 +1627,9 @@ function App() {
                 </div>
 
                 <div className="form-group">
-                  <label>דגם:</label>
+                  <label htmlFor="equipment-model">דגם:</label>
                   <input
+                    id="equipment-model"
                     type="text"
                     name="model"
                     placeholder="הזן דגם"
@@ -1612,8 +1641,9 @@ function App() {
 
                 {isPhone && (
                   <div className="form-group">
-                    <label>צבע:</label>
+                    <label htmlFor="equipment-color">צבע:</label>
                     <input
+                      id="equipment-color"
                       type="text"
                       name="color"
                       placeholder="הזן צבע"
@@ -1625,8 +1655,9 @@ function App() {
                 )}
 
                 <div className="form-group">
-                  <label>סיריאל:</label>
+                  <label htmlFor="equipment-serial-number">סיריאל:</label>
                   <input
+                    id="equipment-serial-number"
                     type="text"
                     name="serialNumber"
                     placeholder="הזן סיריאל"
@@ -1638,8 +1669,9 @@ function App() {
 
                 {isComputer && (
                   <div className="form-group">
-                    <label>אינוונטר:</label>
+                    <label htmlFor="equipment-inventory-serial">אינוונטר:</label>
                     <input
+                      id="equipment-inventory-serial"
                       type="text"
                       name="inventorySerial"
                       placeholder="הזן אינוונטר"
@@ -1662,6 +1694,7 @@ function App() {
 
               <div className="excel-import-controls">
                 <input
+                  aria-label="בחר קובץ Excel לייבוא"
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={(e) => {
@@ -1722,6 +1755,7 @@ function App() {
                   </button>
                 </div>
                 <input
+                  aria-label="חיפוש נתונים שמורים"
                   type="search"
                   className="search-input"
                   placeholder="חיפוש לפי שם, מייל, סיריאל או אינוונטר"
