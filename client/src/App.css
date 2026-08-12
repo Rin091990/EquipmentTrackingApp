@@ -457,6 +457,31 @@ textarea:focus-visible,
   text-align: center;
 }
 
+.details-action-column,
+.details-action-cell {
+  width: 78px;
+  min-width: 78px;
+  text-align: center;
+}
+
+.details-row-button {
+  background: #edf9fb;
+  border: 1px solid #c6eef2;
+  border-radius: 4px;
+  color: var(--brand-navy);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 5px 9px;
+  white-space: nowrap;
+}
+
+.details-row-button:hover {
+  background: var(--brand-cyan);
+  border-color: var(--brand-cyan);
+  color: white;
+}
+
 .row-action-checkbox {
   width: 14px;
   height: 14px;

@@ -161,12 +161,13 @@ function App() {
 
   const renderCompactEquipmentHeaders = () => (
     <>
-      {isAdmin && <th className="select-column"></th>}
-      <th>{renderSortableHeader('שם עובד', 'name')}</th>
-      <th>דוא"ל</th>
-      <th>{renderSortableHeader('מבנה', 'building')}</th>
-      <th>משרד</th>
-      <th>תאריך</th>
+      {isAdmin && <th scope="col" className="select-column"></th>}
+      <th scope="col">{renderSortableHeader('שם עובד', 'name')}</th>
+      <th scope="col">דוא"ל</th>
+      <th scope="col">{renderSortableHeader('מבנה', 'building')}</th>
+      <th scope="col">משרד</th>
+      <th scope="col">תאריך</th>
+      <th scope="col" className="details-action-column">פרטים</th>
     </>
   );
 
@@ -200,6 +201,16 @@ function App() {
         )}
       </td>
       <td>{new Date(row.created_at).toLocaleDateString('he-IL')}</td>
+      <td className="details-action-cell">
+        <button
+          type="button"
+          className="details-row-button"
+          onClick={() => setDetailsRow(row)}
+          aria-label={`הצג פרטים עבור ${row.name || 'רשומה'}`}
+        >
+          פרטים
+        </button>
+      </td>
     </>
   );
 
