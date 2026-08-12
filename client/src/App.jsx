@@ -83,6 +83,8 @@ function App() {
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [detailsRow, setDetailsRow] = useState(null);
   const [activeEditField, setActiveEditField] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const [deleteCandidateId, setDeleteCandidateId] = useState(null);
   const isMonitorAccessory = accessoryForm.type === 'monitor';
   const isPrinterAccessory = accessoryForm.type === 'printer';
   const isDockingStationAccessory = accessoryForm.type === 'dockingStation';
@@ -120,6 +122,27 @@ function App() {
       {children}
     </p>
   );
+
+  const showNotification = useCallback((message, tone = 'info') => {
+    setNotification({ message, tone });
+  }, []);
+
+  const renderGlobalFeedback = () =>
+    notification ? (
+      <div className="global-feedback">
+        <StatusMessage tone={notification.tone} assertive={notification.tone === 'error'}>
+          {notification.message}
+        </StatusMessage>
+        <button
+          type="button"
+          className="feedback-close"
+          onClick={() => setNotification(null)}
+          aria-label="סגור הודעה"
+        >
+          ×
+        </button>
+      </div>
+    ) : null;
 
   const isInteractiveTarget = (target) =>
     Boolean(target.closest('button, input, select, a, textarea, label'));
@@ -411,11 +434,11 @@ function App() {
 
     try {
       await api.post('/submit', form);
-      alert('המידע נשמר בהצלחה!');
+      showNotification('המידע נשמר בהצלחה!', 'success');
       setForm(emptyForm);
       fetchData();
     } catch (err) {
-      alert('שגיאה: ' + (err.response?.data?.error || err.message));
+      showNotification('שגיאה: ' + (err.response?.data?.error || err.message), 'error');
     }
   };
 
@@ -439,11 +462,11 @@ function App() {
       setImportResult(response.data);
       setImportFile(null);
       await fetchData();
-      alert(response.data.message || 'הייבוא הסתיים בהצלחה');
+      showNotification(response.data.message || 'הייבוא הסתיים בהצלחה', 'success');
     } catch (err) {
       const responseData = err.response?.data;
       setImportResult(responseData || null);
-      alert('שגיאה בייבוא: ' + (responseData?.error || err.message));
+      showNotification('שגיאה בייבוא: ' + (responseData?.error || err.message), 'error');
     } finally {
       setImportLoading(false);
     }
@@ -476,9 +499,9 @@ function App() {
       });
       setOfficeAccessories((current) => [response.data.row, ...current]);
       setAccessoryForm(emptyAccessoryForm);
-      alert('הציוד הנלווה נשמר בהצלחה!');
+      showNotification('הציוד הנלווה נשמר בהצלחה!', 'success');
     } catch (err) {
-      alert('שגיאה: ' + (err.response?.data?.error || err.message));
+      showNotification('שגיאה: ' + (err.response?.data?.error || err.message), 'error');
     }
   };
 
@@ -566,9 +589,9 @@ function App() {
         setSelectedOffice('');
         setSelectedSection('buildings');
       }
-      alert('השינויים נשמרו בהצלחה!');
+      showNotification('השינויים נשמרו בהצלחה!', 'success');
     } catch (err) {
-      alert('שגיאה: ' + (err.response?.data?.error || err.message));
+      showNotification('שגיאה: ' + (err.response?.data?.error || err.message), 'error');
     }
   };
 
@@ -641,7 +664,7 @@ function App() {
       const response = await api.get(`/history/${row.id}`);
       setHistoryRows(response.data);
     } catch (err) {
-      alert('שגיאה בטעינת היסטוריה: ' + (err.response?.data?.error || err.message));
+      showNotification('שגיאה בטעינת היסטוריה: ' + (err.response?.data?.error || err.message), 'error');
     } finally {
       setHistoryLoading(false);
     }
@@ -764,7 +787,7 @@ function App() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert('שגיאה בייצוא: ' + (err.response?.data?.error || err.message));
+      showNotification('שגיאה בייצוא: ' + (err.response?.data?.error || err.message), 'error');
     }
   };
 
@@ -782,7 +805,7 @@ function App() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert('שגיאה בהפקת טופס ציוד לעובד: ' + (err.response?.data?.error || err.message));
+      showNotification('שגיאה בהפקת טופס ציוד לעובד: ' + (err.response?.data?.error || err.message), 'error');
     }
   };
 
@@ -941,21 +964,54 @@ function App() {
   const handleDelete = async (id) => {
     if (!isAdmin) return;
 
-    if (window.confirm('האם אתה בטוח שתרצה למחוק את הרשומה?')) {
-      try {
-        await api.delete(`/delete/${id}`);
-        alert('נמחק בהצלחה!');
-        setDetailsRow((current) => (current?.id === id ? null : current));
-        fetchData();
-      } catch (err) {
-        alert('שגיאה: ' + err.message);
-      }
+    setDeleteCandidateId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!isAdmin || !deleteCandidateId) return;
+
+    const id = deleteCandidateId;
+
+    try {
+      await api.delete(`/delete/${id}`);
+      showNotification('נמחק בהצלחה!', 'success');
+      setDetailsRow((current) => (current?.id === id ? null : current));
+      setDeleteCandidateId(null);
+      fetchData();
+    } catch (err) {
+      showNotification('שגיאה: ' + err.message, 'error');
     }
   };
+
+  const renderDeleteDialog = () =>
+    deleteCandidateId ? (
+      <div className="modal-overlay" role="presentation">
+        <div
+          className="confirm-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+          aria-describedby="delete-dialog-description"
+        >
+          <h2 id="delete-dialog-title">מחיקת רשומה</h2>
+          <p id="delete-dialog-description">האם למחוק את הרשומה הזו?</p>
+          <div className="confirm-dialog-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setDeleteCandidateId(null)}>
+              ביטול
+            </button>
+            <button type="button" className="btn btn-delete" onClick={confirmDelete}>
+              מחק
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null;
 
   if (!auth) {
     return (
       <div className="login-page">
+        {renderGlobalFeedback()}
+        {renderDeleteDialog()}
         <section className="login-card">
           <h1>כניסה למערכת</h1>
           <p>ניהול ציוד עובדים במקום אחד</p>
@@ -1005,6 +1061,8 @@ function App() {
   if (!selectedSection) {
     return (
       <div className="app-container">
+        {renderGlobalFeedback()}
+        {renderDeleteDialog()}
         <header className="header">
           <div>
             <h1>מרכז עבודה</h1>
@@ -1050,6 +1108,8 @@ function App() {
   if (selectedSection === 'buildings') {
     return (
       <div className="app-container">
+        {renderGlobalFeedback()}
+        {renderDeleteDialog()}
         <header className="header">
           <div>
             <h1>מבנים</h1>
@@ -1107,6 +1167,8 @@ function App() {
   if (selectedSection === 'buildingDetails') {
     return (
       <div className="app-container">
+        {renderGlobalFeedback()}
+        {renderDeleteDialog()}
         <header className="header">
           <div>
             <h1>{selectedBuilding ? `מבנה ${selectedBuilding}` : 'מבנה'}</h1>
@@ -1176,6 +1238,8 @@ function App() {
   if (selectedSection === 'officeDetails') {
     return (
       <div className="app-container">
+        {renderGlobalFeedback()}
+        {renderDeleteDialog()}
         <header className="header">
           <div>
             <h1>משרד {selectedOffice}</h1>
@@ -1391,6 +1455,8 @@ function App() {
   if (selectedSection === 'itemHistory') {
     return (
       <div className="app-container">
+        {renderGlobalFeedback()}
+        {renderDeleteDialog()}
         <header className="header">
           <div>
             <h1>היסטוריית פריט</h1>
@@ -1500,6 +1566,8 @@ function App() {
 
   return (
     <div className="app-container">
+      {renderGlobalFeedback()}
+      {renderDeleteDialog()}
       <header className="header">
         <div>
           <h1>ניהול ציוד</h1>
