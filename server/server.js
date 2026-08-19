@@ -5,22 +5,36 @@ const XLSX = require('xlsx');
 const cors = require('cors');
 const crypto = require('crypto');
 
+const REQUIRED_ENV_VARS = [
+  'AUTH_SECRET',
+  'ADMIN_USERNAME',
+  'ADMIN_PASSWORD',
+  'VIEWER_USERNAME',
+  'VIEWER_PASSWORD',
+];
+
+const missingEnvVars = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
+if (missingEnvVars.length > 0) {
+  console.error(`❌ חסרים משתני סביבה נדרשים: ${missingEnvVars.join(', ')}`);
+  process.exit(1);
+}
+
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'equipment-tracking-dev-secret';
+const AUTH_SECRET = process.env.AUTH_SECRET;
 const TOKEN_MAX_AGE_MS = 8 * 60 * 60 * 1000;
 
 const users = [
   {
-    username: process.env.ADMIN_USERNAME || 'admin',
-    password: process.env.ADMIN_PASSWORD || 'admin123',
+    username: process.env.ADMIN_USERNAME,
+    password: process.env.ADMIN_PASSWORD,
     role: 'admin',
   },
   {
-    username: process.env.VIEWER_USERNAME || 'viewer',
-    password: process.env.VIEWER_PASSWORD || 'viewer123',
+    username: process.env.VIEWER_USERNAME,
+    password: process.env.VIEWER_PASSWORD,
     role: 'viewer',
   },
 ];
